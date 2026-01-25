@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  username  String?
+  role      UserRole @default(MEMBER)
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+
+  dormitories    Dormitory[]
+  rentalRequests RentalRequest[]
+  leaseContracts LeaseContract[]
+  reviews        Review[]
+}
+
+
+model Dormitory {
+  id        Int    @id @default(autoincrement())
+  name      String
+  address   String
+  type      String   // Male / Female / Mixed
+  ownerId   Int
+
+  owner User   @relation(fields: [ownerId], references: [id])
+  rooms Room[]
+  reviews Review[]
+}
+
+model Room {
+  id          Int    @id @default(autoincrement())
+  roomNumber  String
+  price       Float
+  size        Float
+  status      String
+  floor       Int
+  capacity    Int
+  dormitoryId Int
+
+  dormitory     Dormitory      @relation(fields: [dormitoryId], references: [id])
+  rentalRequests RentalRequest[]
+  leaseContracts LeaseContract[]
+}
+
+model RentalRequest {
+  id          Int      @id @default(autoincrement())
+  requestDate DateTime @default(now())
+  status      String
+  userId      Int
+  roomId      Int
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+  leaseContract LeaseContract?
+}
+
+model LeaseContract {
+  id          Int      @id @default(autoincrement())
+  startDate   DateTime
+  endDate     DateTime
+  monthlyRent Float
+  deposit     Float
+  status      String
+
+  userId    Int
+  roomId    Int
+  requestId Int @unique
+
+  user    User          @relation(fields: [userId], references: [id])
+  room    Room          @relation(fields: [roomId], references: [id])
+  request RentalRequest @relation(fields: [requestId], references: [id])
+
+  payments Payment[]
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  paymentDate DateTime @default(now())
+  amount      Float
+  status      String
+  contractId  Int
+
+  contract LeaseContract @relation(fields: [contractId], references: [id])
+}
+
+model Review {
+  id           Int      @id @default(autoincrement())
+  rating       Int
+  comment      String
+  reviewDate   DateTime @default(now())
+  userId       Int
+  dormitoryId  Int
+
+  user      User      @relation(fields: [userId], references: [id])
+  dormitory Dormitory @relation(fields: [dormitoryId], references: [id])
+}
+
+enum UserRole {
+  MEMBER
+  DORMITORY_STAFF
+  ADMIN
+}
+
