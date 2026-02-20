@@ -1,21 +1,21 @@
 <template>
   <div>
     <!-- Page Title -->
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">
+    <h1 class="mb-6 text-2xl font-bold text-gray-800">
       Manage User Accounts
     </h1>
 
     <!-- Search & Filter -->
-    <div class="flex flex-col md:flex-row gap-4 mb-4">
+    <div class="flex flex-col gap-4 mb-4 md:flex-row">
       <input
         v-model="search"
         placeholder="Search by username or email"
-        class="border rounded px-3 py-2 w-full md:w-1/2"
+        class="w-full px-3 py-2 border rounded md:w-1/2"
       />
 
       <select
         v-model="filterRole"
-        class="border rounded px-3 py-2 w-full md:w-1/4"
+        class="w-full px-3 py-2 border rounded md:w-1/4"
       >
         <option value="">All Roles</option>
         <option value="MEMBER">MEMBER</option>
@@ -25,9 +25,9 @@
     </div>
 
     <!-- User Table -->
-    <div class="bg-white rounded-lg shadow overflow-x-auto">
+    <div class="overflow-x-auto bg-white rounded-lg shadow">
       <table class="min-w-full text-sm">
-        <thead class="bg-gray-50 text-gray-600">
+        <thead class="text-gray-600 bg-gray-50">
           <tr>
             <th class="px-4 py-3 text-left">ID</th>
             <th class="px-4 py-3 text-left">Username</th>
@@ -54,18 +54,19 @@
               <select
                 v-model="user.role"
                 @change="updateRole(user)"
-                class="border rounded px-2 py-1"
+                class="px-2 py-1 border rounded"
               >
                 <option value="MEMBER">MEMBER</option>
                 <option value="DORMITORY_STAFF">DORMITORY_STAFF</option>
                 <option value="ADMIN">ADMIN</option>
+                <option value="OWNER">OWNER</option>
               </select>
             </td>
 
             <!-- Status -->
             <td class="px-4 py-2">
               <span
-                class="px-2 py-1 rounded text-xs font-medium"
+                class="px-2 py-1 text-xs font-medium rounded"
                 :class="user.isActive
                   ? 'bg-green-100 text-green-700'
                   : 'bg-red-100 text-red-700'"
@@ -93,7 +94,7 @@
           </tr>
 
           <tr v-if="filteredUsers.length === 0">
-            <td colspan="7" class="text-center py-6 text-gray-500">
+            <td colspan="7" class="py-6 text-center text-gray-500">
               No users found
             </td>
           </tr>

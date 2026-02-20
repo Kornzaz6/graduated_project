@@ -69,6 +69,9 @@ export const login = async (req: Request, res: Response) => {
       where: {
         OR: [{ email: identifier }, { username: identifier }],
       },
+      include: {
+        owner: true
+      },
     });
 
     if (!user) {

@@ -14,5 +14,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  api:
+    build: .
+    container_name: dormitory_api
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://dorm_user:dorm_password@postgres:5432/dormitory_db
+    ports:
+      - "5000:5000"
+    command: npm run dev
+
 volumes:
   postgres_data:

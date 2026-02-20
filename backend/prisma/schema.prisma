@@ -15,13 +15,31 @@ model User {
   role      UserRole @default(MEMBER)
   firstName String
   lastName  String
-  isActive  Boolean  @default(true)   // ⭐ เพิ่มตรงนี้
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  dormitories    Dormitory[]
   rentalRequests RentalRequest[]
   leaseContracts LeaseContract[]
   reviews        Review[]
+
+  owner              Owner?
+  ownerApplications  OwnerApplication[]   // ✅ fixed
+}
+
+
+
+model Owner {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  firstName   String
+  lastName    String
+  phone       String
+  email       String
+  createdAt   DateTime @default(now())
+
+  dormitories Dormitory[]
+
+  user        User @relation(fields: [userId], references: [id])
 }
 
 
@@ -32,12 +50,28 @@ model Dormitory {
   name      String
   address   String
   type      String   // Male / Female / Mixed
-  ownerId   Int
 
-  owner User   @relation(fields: [ownerId], references: [id])
-  rooms Room[]
-  reviews Review[]
+  location  String?
+  latitude  Float?
+  longitude Float?
+
+  ownerId   Int
+  owner     Owner   @relation(fields: [ownerId], references: [id])
+
+  rooms     Room[]
+  reviews   Review[]
+  images DormitoryImage[]
+
 }
+
+model DormitoryImage {
+  id           Int       @id @default(autoincrement())
+  imageUrl     String
+  dormitoryId  Int
+  dormitory    Dormitory @relation(fields: [dormitoryId], references: [id])
+}
+
+
 
 model Room {
   id          Int    @id @default(autoincrement())
@@ -111,5 +145,24 @@ enum UserRole {
   MEMBER
   DORMITORY_STAFF
   ADMIN
+  OWNER
 }
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model OwnerApplication {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  phone     String
+  message   String?
+  status    ApplicationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
 

@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+  <div class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
       <!-- Title -->
-      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">
+      <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">
         Login
       </h2>
 
@@ -17,7 +17,7 @@
             type="text"
             required
             placeholder="Enter email or username"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -31,26 +31,26 @@
             type="password"
             required
             placeholder="Enter password"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <!-- Error Message -->
-        <p v-if="error" class="text-red-500 text-sm">
+        <p v-if="error" class="text-sm text-red-500">
           {{ error }}
         </p>
 
         <!-- Submit Button -->
         <button
           type="submit"
-          class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+          class="w-full py-2 text-white transition bg-blue-600 rounded-md hover:bg-blue-700"
         >
           Login
         </button>
       </form>
 
       <!-- Register Link -->
-      <p class="text-sm text-center mt-4 text-gray-600">
+      <p class="mt-4 text-sm text-center text-gray-600">
         Don't have an account?
         <router-link to="/register" class="text-blue-600 hover:underline">
           Register
@@ -65,6 +65,7 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
+
 
 const form = reactive({
   identifier: "",
@@ -92,11 +93,15 @@ const handleLogin = async () => {
       return;
     }
 
-    // Login success
-    // (ตอนนี้ยังไม่ใช้ JWT → แค่ redirect)
-    router.push("/dashboard");
+    // ✅ เก็บ user ลง localStorage
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    // ✅ redirect
+    router.push(data.user.role === "OWNER" ? "/owner/dashboard" : "/dashboard");
+
   } catch (err) {
     error.value = "Cannot connect to server";
   }
 };
+
 </script>
