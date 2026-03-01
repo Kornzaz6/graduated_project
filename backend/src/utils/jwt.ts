@@ -1,6 +1,6 @@
 import jwt, { SignOptions } from "jsonwebtoken"
 
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET as string
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined in .env")
@@ -8,7 +8,7 @@ if (!JWT_SECRET) {
 
 export const generateToken = (payload: object): string => {
   const options: SignOptions = {
-    expiresIn: "7d"   // 👈 แบบนี้ TypeScript จะไม่ error
+    expiresIn: "7d"
   }
 
   return jwt.sign(payload, JWT_SECRET, options)
