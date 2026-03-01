@@ -5,8 +5,13 @@ import jwt from "jsonwebtoken"
 
 /* ================= JWT CONFIG ================= */
 
-const JWT_SECRET = process.env.JWT_SECRET as string
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d"
+const JWT_SECRET: string = process.env.JWT_SECRET || ""
+const JWT_EXPIRES_IN: jwt.SignOptions["expiresIn"] =
+  (process.env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"]) || "7d"
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined")
+}
 
 /* ================= REGISTER ================= */
 
@@ -110,14 +115,16 @@ export const login = async (req: Request, res: Response) => {
     /* ================= GENERATE JWT ================= */
 
     const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-        email: user.email
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    )
+  {
+    id: user.id,
+    role: user.role,
+    email: user.email
+  },
+  JWT_SECRET,
+  {
+    expiresIn: JWT_EXPIRES_IN
+  } as jwt.SignOptions
+)
 
     return res.status(200).json({
       message: "Login successful",
