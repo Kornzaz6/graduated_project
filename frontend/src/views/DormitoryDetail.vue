@@ -204,7 +204,6 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
-import { C } from 'vue-router/dist/router-CWoNjPRp.mjs'
 
 const route = useRoute()
 const router = useRouter()
