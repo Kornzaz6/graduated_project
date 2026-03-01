@@ -19,7 +19,7 @@
       >
         <option value="">All Roles</option>
         <option value="MEMBER">MEMBER</option>
-        <option value="DORMITORY_STAFF">DORMITORY_STAFF</option>
+        <option value="OWNER">OWNER</option>
         <option value="ADMIN">ADMIN</option>
       </select>
     </div>
@@ -57,7 +57,6 @@
                 class="px-2 py-1 border rounded"
               >
                 <option value="MEMBER">MEMBER</option>
-                <option value="DORMITORY_STAFF">DORMITORY_STAFF</option>
                 <option value="ADMIN">ADMIN</option>
                 <option value="OWNER">OWNER</option>
               </select>
@@ -119,48 +118,87 @@ interface User {
 const users = ref<User[]>([]);
 const search = ref("");
 const filterRole = ref("");
+const loading = ref(false);
 
-// fetch all users
+/* ================= FETCH USERS ================= */
 const fetchUsers = async () => {
   try {
+    loading.value = true;
+
     const response = await fetch(
-      "http://localhost:5000/api/auth/users"
+      "http://localhost:5000/api/users"
     );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch users");
+    }
+
     users.value = await response.json();
   } catch (error) {
-    console.error("Failed to fetch users", error);
+    console.error("Fetch users error:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
-// update role
+/* ================= UPDATE ROLE ================= */
 const updateRole = async (user: User) => {
-  await fetch(
-    `http://localhost:5000/api/auth/users/${user.id}/role`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: user.role }),
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/users/${user.id}/role`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: user.role }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update role");
     }
-  );
+
+    const data = await response.json();
+
+    // อัปเดตค่าใน local state ให้ตรงกับ DB
+    const index = users.value.findIndex(u => u.id === user.id);
+    if (index !== -1) {
+      users.value[index].role = data.role;
+    }
+
+  } catch (error) {
+    console.error("Update role error:", error);
+    alert("Failed to update role");
+    fetchUsers(); // rollback
+  }
 };
 
-// suspend / activate
+/* ================= TOGGLE STATUS ================= */
 const toggleStatus = async (user: User) => {
   const newStatus = !user.isActive;
 
-  await fetch(
-    `http://localhost:5000/api/auth/users/${user.id}/status`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: newStatus }),
-    }
-  );
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/users/${user.id}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: newStatus }),
+      }
+    );
 
-  user.isActive = newStatus;
+    if (!response.ok) {
+      throw new Error("Failed to update status");
+    }
+
+    user.isActive = newStatus;
+
+  } catch (error) {
+    console.error("Toggle status error:", error);
+    alert("Failed to update status");
+  }
 };
 
-// search & filter
+/* ================= FILTER ================= */
 const filteredUsers = computed(() => {
   return users.value.filter((u) => {
     const matchSearch =

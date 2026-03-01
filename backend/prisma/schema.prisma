@@ -7,139 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  role      UserRole @default(MEMBER)
-  firstName String
-  lastName  String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  rentalRequests RentalRequest[]
-  leaseContracts LeaseContract[]
-  reviews        Review[]
-
-  owner              Owner?
-  ownerApplications  OwnerApplication[]   // ✅ fixed
-}
-
-
-
-model Owner {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
-  firstName   String
-  lastName    String
-  phone       String
-  email       String
-  createdAt   DateTime @default(now())
-
-  dormitories Dormitory[]
-
-  user        User @relation(fields: [userId], references: [id])
-}
-
-
-
-
-model Dormitory {
-  id        Int    @id @default(autoincrement())
-  name      String
-  address   String
-  type      String   // Male / Female / Mixed
-
-  location  String?
-  latitude  Float?
-  longitude Float?
-
-  ownerId   Int
-  owner     Owner   @relation(fields: [ownerId], references: [id])
-
-  rooms     Room[]
-  reviews   Review[]
-  images DormitoryImage[]
-
-}
-
-model DormitoryImage {
-  id           Int       @id @default(autoincrement())
-  imageUrl     String
-  dormitoryId  Int
-  dormitory    Dormitory @relation(fields: [dormitoryId], references: [id])
-}
-
-
-
-model Room {
-  id          Int    @id @default(autoincrement())
-  roomNumber  String
-  price       Float
-  size        Float
-  status      String
-  floor       Int
-  capacity    Int
-  dormitoryId Int
-
-  dormitory     Dormitory      @relation(fields: [dormitoryId], references: [id])
-  rentalRequests RentalRequest[]
-  leaseContracts LeaseContract[]
-}
-
-model RentalRequest {
-  id          Int      @id @default(autoincrement())
-  requestDate DateTime @default(now())
-  status      String
-  userId      Int
-  roomId      Int
-
-  user User @relation(fields: [userId], references: [id])
-  room Room @relation(fields: [roomId], references: [id])
-  leaseContract LeaseContract?
-}
-
-model LeaseContract {
-  id          Int      @id @default(autoincrement())
-  startDate   DateTime
-  endDate     DateTime
-  monthlyRent Float
-  deposit     Float
-  status      String
-
-  userId    Int
-  roomId    Int
-  requestId Int @unique
-
-  user    User          @relation(fields: [userId], references: [id])
-  room    Room          @relation(fields: [roomId], references: [id])
-  request RentalRequest @relation(fields: [requestId], references: [id])
-
-  payments Payment[]
-}
-
-model Payment {
-  id          Int      @id @default(autoincrement())
-  paymentDate DateTime @default(now())
-  amount      Float
-  status      String
-  contractId  Int
-
-  contract LeaseContract @relation(fields: [contractId], references: [id])
-}
-
-model Review {
-  id           Int      @id @default(autoincrement())
-  rating       Int
-  comment      String
-  reviewDate   DateTime @default(now())
-  userId       Int
-  dormitoryId  Int
-
-  user      User      @relation(fields: [userId], references: [id])
-  dormitory Dormitory @relation(fields: [dormitoryId], references: [id])
-}
+/**
+ * ================= ENUMS =================
+ */
 
 enum UserRole {
   MEMBER
@@ -154,15 +24,331 @@ enum ApplicationStatus {
   REJECTED
 }
 
-model OwnerApplication {
-  id        Int               @id @default(autoincrement())
-  userId    Int
-  phone     String
-  message   String?
-  status    ApplicationStatus @default(PENDING)
-  createdAt DateTime          @default(now())
-
-  user User @relation(fields: [userId], references: [id])
+enum RentalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
 
+enum ContractStatus {
+  DRAFT
+  WAITING_OWNER_APPROVAL
+  ACTIVE
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SLIP_UPLOADED
+  VERIFYING
+  VERIFIED
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+enum PaymentType {
+  BANK
+  PROMPTPAY
+}
+
+enum DormitoryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/**
+ * ================= MODELS =================
+ */
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  role      UserRole @default(MEMBER)
+  firstName String
+  lastName  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  universityId Int?
+  university   University? @relation(fields: [universityId], references: [id])
+
+  rentalRequests RentalRequest[]
+  leaseContracts LeaseContract[]
+  reviews        Review[]
+
+  owner             Owner?
+  ownerApplications OwnerApplication[]
+
+  @@index([role])
+}
+
+model University {
+  id          Int      @id @default(autoincrement())
+  name        String
+  shortName   String?
+  province    String?
+  latitude    Float
+  longitude   Float
+  source      String   @default("seed")
+  searchCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  users User[]
+
+  @@unique([name, latitude, longitude])
+}
+
+model Owner {
+  id     Int @id @default(autoincrement())
+  userId Int @unique
+
+  firstName String
+  lastName  String
+  phone     String
+  email     String
+
+  idCardImage     String?
+  businessLicense String?
+
+  /**
+   * ================= PAYMENT =================
+   */
+
+  paymentType PaymentType @default(BANK)
+
+  bankName        String?
+  bankAccountName String?
+  bankAccountNo   String? // 🔐 encrypted
+
+  /**
+   * ================= STATUS =================
+   */
+
+  isActive   Boolean   @default(true)
+  verifiedAt DateTime?
+
+  /**
+   * ================= META =================
+   */
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+
+  dormitories Dormitory[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Dormitory {
+  id        Int     @id @default(autoincrement())
+  name      String
+  address   String
+  type      String
+  location  String?
+  latitude  Float?
+  longitude Float?
+
+  /* ================= STATUS ================= */
+
+  status      DormitoryStatus @default(PENDING)
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  approvedBy  Int?  // admin userId
+  rejectionNote String?
+
+  /* ================= RELATIONS ================= */
+
+  ownerId Int
+  owner   Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  rooms   Room[]
+  reviews Review[]
+  images  DormitoryImage[]
+
+  @@index([status])
+  @@index([ownerId])
+}
+
+model DormitoryImage {
+  id          Int       @id @default(autoincrement())
+  imageUrl    String
+  dormitoryId Int
+  dormitory   Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id          Int        @id @default(autoincrement())
+  roomNumber  String
+  price       Decimal    @db.Decimal(10, 2)
+  size        Float
+  status      RoomStatus @default(AVAILABLE)
+  floor       Int
+  capacity    Int
+  dormitoryId Int
+
+  dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+
+  rentalRequests RentalRequest[]
+  leaseContracts LeaseContract[]
+
+  @@unique([dormitoryId, roomNumber])
+  @@index([status])
+}
+
+model RentalRequest {
+  id          Int          @id @default(autoincrement())
+  requestDate DateTime     @default(now())
+  status      RentalStatus @default(PENDING)
+  userId      Int
+  roomId      Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  leaseContract LeaseContract?
+
+  @@index([userId])
+  @@index([roomId])
+}
+
+model LeaseContract {
+  id          Int            @id @default(autoincrement())
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int            @default(6) // 6 หรือ 12 เดือน
+  monthlyRent Decimal        @db.Decimal(10, 2)
+  deposit     Decimal        @db.Decimal(10, 2)
+  status      ContractStatus @default(DRAFT)
+
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  userId    Int
+  roomId    Int
+  requestId Int @unique
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room    Room          @relation(fields: [roomId], references: [id])
+  request RentalRequest @relation(fields: [requestId], references: [id])
+
+  payments Payment[]
+
+  @@index([userId])
+  @@index([roomId])
+}
+
+model Payment {
+  id           Int       @id @default(autoincrement())
+  billingMonth DateTime
+  amount       Decimal   @db.Decimal(10, 2)
+  dueDate      DateTime
+  paidAt       DateTime?
+
+  status PaymentStatus @default(PENDING)
+
+  slipImageUrl   String?
+  imageHash      String? @unique
+  transactionRef String? @unique
+
+  receiverName    String?
+  receiverAccount String?
+  bankName        String?
+
+  qrPayload String? // 🔥 raw EMV payload
+  qrImage   String? // 🔥 base64 image
+
+  verifiedByAI     Boolean @default(false)
+  verificationNote String?
+
+  confirmedByOwner Boolean   @default(false)
+  ownerConfirmAt   DateTime?
+  ownerNote        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contractId Int
+  contract   LeaseContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, billingMonth])
+  @@index([contractId])
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  rating      Int
+  comment     String
+  reviewDate  DateTime @default(now())
+  userId      Int
+  dormitoryId Int
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+
+  @@index([dormitoryId])
+}
+
+model OwnerApplication {
+  id     Int @id @default(autoincrement())
+  userId Int
+
+  /**
+   * =====================
+   * Personal Information
+   * =====================
+   */
+  firstName String
+  lastName  String
+  phone     String
+  email     String
+
+  /**
+   * =====================
+   * Bank Information
+   * =====================
+   */
+  bankName        String?
+  bankAccountName String?
+  bankAccountNo   String?
+
+  /**
+   * =====================
+   * Documents (NEW)
+   * =====================
+   */
+  idCardImage     String?
+  businessLicense String?
+
+  /**
+   * =====================
+   * Application Detail
+   * =====================
+   */
+  message String?
+  status  ApplicationStatus @default(PENDING)
+
+  reviewedAt DateTime?
+  reviewedBy Int?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId])
+}

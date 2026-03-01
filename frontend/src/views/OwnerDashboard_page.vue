@@ -1,84 +1,362 @@
 <template>
-  <div>
-    <h1 class="mb-6 text-2xl font-bold">
-      Owner Dashboard
-    </h1>
+  <div class="min-h-screen p-8 bg-gray-100">
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 gap-4 mb-8 md:grid-cols-3">
-      <div class="p-4 bg-white rounded shadow">
-        <p class="text-sm text-gray-500">Total Dormitories</p>
-        <p class="text-2xl font-bold text-blue-600">
-          {{ dormitories.length }}
+    <div class="max-w-6xl mx-auto space-y-10">
+
+      <!-- HEADER -->
+      <div class="p-6 bg-white shadow-xl rounded-2xl">
+        <h1 class="text-2xl font-bold">Owner Dashboard</h1>
+        <p class="mt-2 text-gray-500">
+          จัดการบิล สร้าง QR และดูรายได้
         </p>
       </div>
 
-      <div class="p-4 bg-white rounded shadow">
-        <p class="text-sm text-gray-500">Total Rooms</p>
-        <p class="text-2xl font-bold text-green-600">
-          {{ totalRooms }}
-        </p>
-      </div>
-    </div>
+      <!-- ================= SUMMARY ================= -->
+      <div class="grid grid-cols-3 gap-6">
 
-    <!-- Dormitory List -->
-    <div class="bg-white rounded shadow">
-      <div class="p-4 border-b">
-        <h2 class="text-lg font-semibold">
-          My Dormitories
-        </h2>
-      </div>
-
-      <div class="p-4 space-y-4">
-        <div
-          v-for="dorm in dormitories"
-          :key="dorm.id"
-          class="p-4 border rounded hover:bg-gray-50"
-        >
-          <h3 class="text-lg font-semibold">
-            {{ dorm.name }}
-          </h3>
-
-          <p class="text-sm text-gray-500">
-            {{ dorm.address }}
-          </p>
-
-          <p class="mt-1 text-sm">
-            Rooms: {{ dorm.rooms.length }}
-          </p>
+        <div class="summary-card">
+          <h3>รายได้ทั้งหมด</h3>
+          <p>{{ totalIncome.toLocaleString() }} ฿</p>
         </div>
 
-        <p v-if="dormitories.length === 0" class="text-gray-500">
-          No dormitories yet.
-        </p>
+        <div class="summary-card">
+          <h3>รอการชำระ</h3>
+          <p>{{ pendingCount }}</p>
+        </div>
+
+        <div class="summary-card">
+          <h3>จ่ายแล้ว</h3>
+          <p>{{ confirmedCount }}</p>
+        </div>
+
+      </div>
+
+      <!-- ================= SELECT CONTRACT ================= -->
+      <div class="card">
+        <h2 class="section-title">เลือกสัญญาเช่า</h2>
+
+        <select v-model="selectedContractId" class="input">
+          <option disabled value="">เลือก Contract</option>
+          <option
+            v-for="contract in contracts"
+            :key="contract.id"
+            :value="contract.id"
+          >
+            ห้อง {{ contract.room.roomNumber }} - {{ contract.user.firstName }}
+          </option>
+        </select>
+      </div>
+
+      <!-- ================= CREATE BILL ================= -->
+      <div class="card">
+        <h2 class="section-title">สร้างบิลรายเดือน</h2>
+
+        <div class="grid grid-cols-3 gap-4">
+
+          <input type="month" v-model="billForm.billingMonth" class="input" />
+          <input type="number" v-model="billForm.amount" placeholder="จำนวนเงิน" class="input" />
+          <input type="date" v-model="billForm.dueDate" class="input" />
+
+        </div>
+
+        <button
+          @click="createBill"
+          class="mt-4 btn-primary"
+        >
+          สร้างบิล
+        </button>
+
+      </div>
+
+      <!-- ================= GENERATE CUSTOM QR ================= -->
+      <div class="card">
+        <h2 class="section-title">สร้าง QR เอง</h2>
+
+        <div class="flex gap-4">
+          <input
+            type="number"
+            v-model="customAmount"
+            placeholder="ใส่จำนวนเงิน"
+            class="input"
+          />
+
+          <button
+            @click="generateCustomQR"
+            class="btn-primary"
+          >
+            สร้าง QR
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= PAYMENT LIST ================= -->
+<div class="card">
+  <h2 class="section-title">รายการบิล</h2>
+
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="th">เดือน</th>
+        <th class="th">จำนวนเงิน</th>
+        <th class="th">สถานะ</th>
+        <th class="th">จัดการ</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr
+        v-for="payment in payments"
+        :key="payment.id"
+        class="border-t"
+      >
+        <td class="td">
+          {{ formatMonth(payment.billingMonth) }}
+        </td>
+
+        <td class="td">
+          {{ Number(payment.amount).toLocaleString() }} ฿
+        </td>
+
+        <td class="td">
+          <span :class="statusColor(payment.status)">
+            {{ payment.status }}
+          </span>
+        </td>
+
+        <td class="td">
+          <router-link
+            v-if="payment.status === 'VERIFIED'"
+            :to="{
+              name: 'ConfirmPayment',
+              params: { paymentId: payment.id }
+            }"
+            class="px-3 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+          >
+            ตรวจสอบ & ยืนยัน
+          </router-link>
+
+          <span
+            v-else-if="payment.status === 'CONFIRMED'"
+            class="font-semibold text-green-600"
+          >
+            ยืนยันแล้ว
+          </span>
+
+          <span v-else class="text-gray-400">-</span>
+        </td>
+
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+    </div>
+
+    <!-- ================= QR MODAL ================= -->
+    <div
+      v-if="showQR"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+    >
+      <div class="p-6 bg-white rounded-2xl w-96">
+
+        <h2 class="mb-4 text-lg font-semibold text-center">
+          QR {{ qrAmount.toLocaleString() }} ฿
+        </h2>
+
+        <img :src="qrImage" class="mx-auto mb-4" />
+
+        <button
+          @click="closeQR"
+          class="w-full py-2 text-white bg-gray-600 rounded hover:bg-gray-700"
+        >
+          ปิด
+        </button>
+
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, watch } from "vue"
 
-const dormitories = ref<any[]>([]);
+const backendURL = "http://localhost:5000"
+const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 
-const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+const contracts = ref<any[]>([])
+const selectedContractId = ref("")
+const payments = ref<any[]>([])
 
-const fetchDormitories = async () => {
-  if (!currentUser?.owner?.id) return;
+const totalIncome = ref(0)
+const pendingCount = ref(0)
+const confirmedCount = ref(0)
 
-  const response = await fetch(
-    `http://localhost:5000/api/dormitories/owner/${currentUser.owner.id}`
-  );
+const billForm = ref({
+  billingMonth: "",
+  amount: "",
+  dueDate: ""
+})
 
-  const data = await response.json();
-  dormitories.value = data;
-};
+const customAmount = ref("")
+const showQR = ref(false)
+const qrImage = ref("")
+const qrAmount = ref(0)
 
-onMounted(() => {
-  fetchDormitories();
-});
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token")
+  if (!token) return {}
 
-const totalRooms = computed(() =>
-  dormitories.value.reduce((sum, dorm) => sum + dorm.rooms.length, 0)
-);
+  return {
+    Authorization: `Bearer ${token}`
+  }
+}
+
+/* ================= FETCH CONTRACTS ================= */
+const fetchContracts = async () => {
+  const res = await fetch(
+  `${backendURL}/api/lease/owner/${currentUser.id}`,
+  {
+    headers: getAuthHeaders()
+  }
+)
+  contracts.value = await res.json()
+}
+
+/* ================= FETCH PAYMENTS ================= */
+const fetchPayments = async () => {
+  if (!selectedContractId.value) return
+
+  const res = await fetch(
+  `${backendURL}/api/payments/contract/${selectedContractId.value}`,
+  {
+    headers: getAuthHeaders()
+  }
+)
+
+  payments.value = await res.json()
+
+  calculateSummary()
+}
+
+/* ================= SUMMARY ================= */
+const calculateSummary = () => {
+  totalIncome.value = payments.value
+    .filter((p: any) => p.status === "CONFIRMED")
+    .reduce((sum: number, p: any) => sum + p.amount, 0)
+
+  pendingCount.value = payments.value.filter(
+    (p: any) => p.status === "PENDING"
+  ).length
+
+  confirmedCount.value = payments.value.filter(
+    (p: any) => p.status === "CONFIRMED"
+  ).length
+}
+
+/* ================= CREATE BILL ================= */
+const createBill = async () => {
+  if (!selectedContractId.value) return
+
+  await fetch(`${backendURL}/api/payments/owner/create`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...getAuthHeaders()
+  },
+  body: JSON.stringify({
+    contractId: selectedContractId.value,
+    ...billForm.value
+  })
+})
+
+  fetchPayments()
+}
+
+/* ================= GENERATE CUSTOM QR ================= */
+const generateCustomQR = async () => {
+  const res = await fetch(`${backendURL}/api/payments/owner/generate-qr`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...getAuthHeaders()
+  },
+  body: JSON.stringify({
+    ownerId: currentUser.id,
+    amount: customAmount.value
+  })
+})
+
+  const data = await res.json()
+
+  qrImage.value = data.qr
+  qrAmount.value = data.amount
+  showQR.value = true
+}
+
+const closeQR = () => {
+  showQR.value = false
+  qrImage.value = ""
+}
+
+/* ================= UTIL ================= */
+const formatMonth = (date: string) => {
+  return new Date(date).toLocaleDateString("th-TH", {
+    month: "long",
+    year: "numeric"
+  })
+}
+
+const statusColor = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return "px-2 py-1 text-xs bg-gray-100 rounded"
+    case "CONFIRMED":
+      return "px-2 py-1 text-xs text-white bg-green-600 rounded"
+    default:
+      return "px-2 py-1 text-xs bg-yellow-100 rounded"
+  }
+}
+
+watch(selectedContractId, fetchPayments)
+
+onMounted(fetchContracts)
 </script>
+
+<style scoped>
+.card {
+  @apply p-6 bg-white shadow-xl rounded-2xl;
+}
+
+.section-title {
+  @apply mb-4 text-lg font-semibold;
+}
+
+.input {
+  @apply w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none;
+}
+
+.btn-primary {
+  @apply px-6 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700;
+}
+
+.summary-card {
+  @apply p-6 bg-white shadow-xl rounded-2xl;
+}
+
+.summary-card h3 {
+  @apply text-sm text-gray-500;
+}
+
+.summary-card p {
+  @apply mt-2 text-xl font-bold;
+}
+
+.th {
+  @apply px-4 py-2 text-left;
+}
+
+.td {
+  @apply px-4 py-2;
+}
+</style>

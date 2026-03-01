@@ -1,62 +1,122 @@
-import { createRouter, createWebHistory } from "vue-router";
-import DashboardLayout from "../layouts/DashboardLayout.vue";
-import DashboardPage from "../views/Dashboard_page.vue";
-import ManageUserAccountPage from "../views/Manage_UserAccount_page.vue";
-import LoginPage from "../views/Login_page.vue";
-import RegisterPage from "../views/Register_page.vue";
-import DormitoryHub_page from "@/views/DormitoryHub_page.vue";
-import AddDormitoryPage from "@/views/AddDormitory_page.vue";
-import ApplyOwner_page from "@/views/ApplyOwner_page.vue";
-import AdminOwnerApplications_page from "@/views/AdminOwnerApplications_page.vue";
-import AdminOwnerApproval_page from "@/views/AdminOwnerApproval_page.vue";
-import OwnerLayout from "@/layouts/OwnerLayout.vue";
-import OwnerDashboardPage from "@/views/OwnerDashboard_page.vue";
-import Manage_myDormitory_page from "@/views/Manage_myDormitory_page.vue";
-import OwnerMange_rooms_page from "@/views/OwnerMange_rooms_page.vue";
+import { createRouter, createWebHistory } from "vue-router"
+
+// Layouts
+import DashboardLayout from "@/layouts/DashboardLayout.vue"
+import OwnerLayout from "@/layouts/OwnerLayout.vue"
+
+// Public
+import LoginPage from "@/views/Login_page.vue"
+import RegisterPage from "@/views/Register_page.vue"
+import DormitoryHub_page from "@/views/DormitoryHub_page.vue"
+import DormitoryDetail from "@/views/DormitoryDetail.vue"
+
+// Admin
+import DashboardPage from "@/views/Dashboard_page.vue"
+import ManageUserAccountPage from "@/views/Manage_UserAccount_page.vue"
+import AdminOwnerApplications_page from "@/views/AdminOwnerApplications_page.vue"
+import ManageLeaseContract_page from "@/views/ManageLeaseContract_page.vue"
+import ManageOwners_page from "@/views/ManageOwners_page.vue"
+import AdminDormApprove_page from "@/views/AdminDormApprove_page.vue"
+
+// Owner
+import OwnerDashboardPage from "@/views/OwnerDashboard_page.vue"
+import AddDormitoryPage from "@/views/AddDormitory_page.vue"
+import Manage_myDormitory_page from "@/views/Manage_myDormitory_page.vue"
+import OwnerMange_rooms_page from "@/views/OwnerMange_rooms_page.vue"
+import ManageRentalRequest_page from "@/views/ManageRentalRequest_page.vue"
+import OwnerPaymentDashboard_page from "@/views/OwnerPaymentDashboard_page.vue"
+import OwnerComfirmPayment_page from "@/views/OwnerComfirmPayment_page.vue"
+import OwnerProfile_page from "@/views/OwnerProfile_page.vue"
+
+// Member
+import MembercontractForm_page from "@/views/MembercontractForm_page.vue"
+import MemberPayment_page from "@/views/MemberPayment_page.vue"
+import MemberDashboard from "@/views/MemberDashboard_page.vue"
+import ApplyOwner_page from "@/views/ApplyOwner_page.vue"
 
 const routes = [
-  { path: "/login", component: LoginPage },
-  { path: "/register", component: RegisterPage },
-  { path: "/", component: DormitoryHub_page },
+  // 🌍 PUBLIC
+  { path: "/", name: "Home", component: DormitoryHub_page },
+  { path: "/login", name: "Login", component: LoginPage },
+  { path: "/register", name: "Register", component: RegisterPage },
+  { path: "/dormitories/:id", name: "DormitoryDetail", component: DormitoryDetail },
 
+  // 👤 MEMBER
   {
-    path: "/",
+    path: "/member",
     component: DashboardLayout,
+    meta: { requiresAuth: true, role: "MEMBER" },
     children: [
-      { path: "dashboard", component: DashboardPage },
-      { path: "manage-users", component: ManageUserAccountPage },
-      { path: "apply-owner", component: ApplyOwner_page },
-      { path: "admin/owner-applications", component: AdminOwnerApplications_page },
-      { path: "admin/owner-approval", component: AdminOwnerApproval_page },
+      { path: "home", name: "MemberHome", component: DormitoryHub_page },
+      { path: "dashboard", name: "MemberDashboard", component: MemberDashboard },
+      { path: "apply-owner", name: "applyowner", component: ApplyOwner_page },
+      { path: "contract/:requestId", name: "MemberContract", component: MembercontractForm_page },
+      { path: "payment/:contractId", name: "MemberPayment", component: MemberPayment_page },
+      { path: "payments", name: "MemberPayments", component: MemberPayment_page }, // 🔥 เพิ่มรวมบิล
     ],
   },
 
+  // 🛠 ADMIN
+  {
+    path: "/admin",
+    component: DashboardLayout,
+    meta: { requiresAuth: true, role: "ADMIN" },
+    children: [
+      { path: "dashboard", name: "AdminDashboard", component: DashboardPage },
+      { path: "manage-users", name: "ManageUsers", component: ManageUserAccountPage },
+      { path: "owner-applications", name: "OwnerApplications", component: AdminOwnerApplications_page },
+      { path: "manage-owners", name: "ManageOwners", component: ManageOwners_page },
+      { path: "apply-owner", name: "ApplyOwner", component: ApplyOwner_page },
+      { path: "dorm-approval", name: "DormApproval", component: AdminDormApprove_page }, // 🔥 ใช้หน้าต่างเดิม แต่แยก logic ใน controller ว่าเป็น owner application หรือ dormitory approval
+    ],
+  },
+
+  // 🏠 OWNER
   {
     path: "/owner",
     component: OwnerLayout,
+    meta: { requiresAuth: true, role: "OWNER" },
     children: [
-      { path: "dashboard", component: OwnerDashboardPage },
-      { path: "add-dormitory", component: AddDormitoryPage },
-      { path: "manage-dormitory", component: Manage_myDormitory_page },
-      { path: "edit-dormitory/:id", component: OwnerMange_rooms_page },
+      { path: "dashboard", name: "OwnerDashboard", component: OwnerDashboardPage },
+      { path: "add-dormitory", name: "AddDormitory", component: AddDormitoryPage },
+      { path: "manage-dormitory", name: "ManageDormitory", component: Manage_myDormitory_page },
+      { path: "edit-dormitory/:id", name: "EditDormitory", component: OwnerMange_rooms_page },
+      { path: "rental-requests", name: "RentalRequests", component: ManageRentalRequest_page },
+      { path: "lease-contracts", name: "LeaseContracts", component: ManageLeaseContract_page },
+      { path: "payments", name: "OwnerPayments", component: OwnerPaymentDashboard_page },
+      { path: "confirm-payment/:paymentId", name: "ConfirmPayment", component: OwnerComfirmPayment_page },
+      { path: "profile", name: "OwnerProfile", component: OwnerProfile_page }
     ],
   },
-];
+
+  { path: "/:pathMatch(.*)*", redirect: "/" },
+]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-});
+})
 
-// 🔐 Owner Guard
+/* 🔐 SMART GLOBAL GUARD */
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("user") || "null")
 
-  if (to.path.startsWith("/owner") && user.role !== "OWNER") {
-    return next("/dashboard");
+  // ถ้า login แล้ว ห้ามกลับไปหน้า login
+  if (to.path === "/login" && user) {
+    if (user.role === "ADMIN") return next("/admin/dashboard")
+    if (user.role === "OWNER") return next("/owner/dashboard")
+    return next("/member/home")
   }
 
-  next();
-});
+  if (to.meta.requiresAuth) {
+    if (!user) return next("/login")
 
-export default router;
+    if (to.meta.role && user.role !== to.meta.role) {
+      return next("/")
+    }
+  }
+
+  next()
+})
+
+export default router

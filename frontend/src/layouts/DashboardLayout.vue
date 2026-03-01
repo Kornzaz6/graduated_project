@@ -1,126 +1,303 @@
-<template>
-  <div class="flex min-h-screen bg-gray-100">
-    <!-- Sidebar -->
-    <aside
-      class="transition-all duration-300 bg-white shadow-md"
-      :class="sidebarOpen ? 'w-64' : 'w-16'"
-    >
-      <!-- Logo / Toggle -->
-      <div class="flex items-center justify-between p-4 border-b">
-        <span
-          v-if="sidebarOpen"
-          class="text-lg font-bold text-blue-600"
-        >
-          Dormitory Hub
-        </span>
-        <button
-          @click="toggleSidebar"
-          class="text-gray-600 hover:text-blue-600"
-        >
-          ☰
-        </button>
-      </div>
+  <template>
+    <div class="min-h-screen bg-gray-50">
+      <!-- TOP BAR -->
+      <header class="sticky top-0 z-[2000] border-b bg-white/80 backdrop-blur-md">
+        <div class="flex items-center justify-between px-6 py-4 mx-auto max-w-7xl">
+          
+          <!-- Logo -->
+          <div
+            class="text-2xl font-bold tracking-tight cursor-pointer text-rose-500"
+            @click="goHome"
+          >
+            DormitoryHub
+          </div>
 
-      <!-- User Profile -->
-<div
-  v-if="currentUser"
-  class="flex items-center gap-3 p-4 border-b"
->
-  <div class="flex items-center justify-center w-10 h-10 text-white bg-blue-600 rounded-full">
-    {{ currentUser.firstName?.charAt(0) || currentUser.username?.charAt(0) }}
-  </div>
+          <!-- Right Section -->
+          <div class="flex items-center gap-4">
 
-  <div v-if="sidebarOpen" class="flex flex-col">
-    <span class="text-sm font-semibold">
-      {{ currentUser.firstName }} {{ currentUser.lastName }}
-    </span>
-    <span class="text-xs text-gray-500">
-      {{ currentUser.role }}
-    </span>
-  </div>
-</div>
+            <!-- 🔔 Notification -->
+            <div class="relative notification-wrapper">
+              <button
+                @click="toggleNotifications"
+                class="relative p-2 transition rounded-full hover:bg-gray-100"
+              >
+                🔔
+                <span
+                  v-if="unreadCount > 0"
+                  class="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-1 -right-1"
+                >
+                  {{ unreadCount }}
+                </span>
+              </button>
 
+              <div
+                v-if="showNotifications"
+                class="absolute right-0 z-[3000] mt-3 bg-white border shadow-xl w-80 rounded-2xl"
+              >
+                <div class="p-4 font-semibold border-b">
+                  Notifications
+                </div>
 
-      <!-- Menu -->
-      <!-- admin only -->
-      <nav class="p-4 space-y-2">
-        <router-link v-if="currentUser?.role == 'ADMIN'"
-          to="/dashboard"
-          class="flex items-center px-3 py-2 space-x-2 text-gray-700 rounded hover:bg-blue-100"
-        >
-          <span>📊</span>
-          <span v-if="sidebarOpen">Dashboard</span>
-        </router-link>
+                <div
+                  v-if="notifications.length === 0"
+                  class="p-4 text-sm text-gray-500"
+                >
+                  ไม่มีแจ้งเตือน
+                </div>
 
-        <router-link v-if="currentUser?.role == 'ADMIN'"
-          to="/manage-users"
-          class="flex items-center px-3 py-2 space-x-2 text-gray-700 rounded hover:bg-blue-100"
-        >
-          <span>👤</span>
-          <span v-if="sidebarOpen">Manage Users</span>
-        </router-link>
+                <div
+                  v-for="noti in notifications"
+                  :key="noti.id"
+                  class="p-4 text-sm transition cursor-pointer hover:bg-gray-50"
+                  @click="goToNotification(noti)"
+                >
+                  {{ noti.message }}
+                </div>
+              </div>
+            </div>
 
-        <router-link v-if="currentUser?.role == 'ADMIN'"
-          to="/apply-owner"
-          class="flex items-center px-3 py-2 space-x-2 text-gray-700 rounded hover:bg-blue-100"
-        >
-          <span>📝</span>
-          <span v-if="sidebarOpen">Apply Owner</span>
-        </router-link>
+            <!-- 👤 User Menu -->
+            <div class="relative menu-wrapper">
+              <button
+                @click="toggleMenu"
+                class="flex items-center gap-3 px-4 py-2 transition bg-white border rounded-full shadow-sm hover:shadow-md"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" />
+                </svg>
 
-        <router-link v-if="currentUser?.role == 'ADMIN'"
-          to="/admin/owner-applications"
-          class="flex items-center px-3 py-2 space-x-2 text-gray-700 rounded hover:bg-blue-100"
-        >
-          <span>📋</span>
-          <span v-if="sidebarOpen">Owner Applications</span>
-        </router-link>
+                <div
+                  class="flex items-center justify-center w-8 h-8 text-sm font-semibold text-white rounded-full bg-rose-500"
+                >
+                  {{ currentUser?.firstName?.charAt(0) || 'G' }}
+                </div>
+              </button>
 
-        <router-link v-if="currentUser?.role == 'ADMIN'"
-          to="/admin/owner-approval"
-          class="flex items-center px-3 py-2 space-x-2 text-gray-700 rounded hover:bg-blue-100"
-        >
-          <span>✅</span>
-          <span v-if="sidebarOpen">Owner Approval</span>
-        </router-link>
-      </nav>
+              <transition name="fade">
+                <div
+                  v-if="menuOpen"
+                  class="absolute right-0 w-56 py-2 mt-3 bg-white border shadow-xl rounded-2xl z-[3000]"
+                >
+                  <div class="px-4 py-2 text-sm text-gray-500 border-b">
+                    {{ currentUser?.firstName || 'Guest' }}
+                  </div>
 
-      <!-- Logout -->
-      <div class="absolute bottom-0 w-full p-4 border-t">
-        <button
-  @click="handleLogout"
-  class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50"
->
-  Logout
-</button>
-      </div>
-    </aside>
+                  <!-- ADMIN -->
+                  <router-link
+                    v-if="isAdmin"
+                    :to="{ name: 'AdminDashboard' }"
+                    class="dropdown-item"
+                  >
+                    Admin Dashboard
+                  </router-link>
 
-    <!-- Main Content -->
-    <main class="flex-1 p-6">
-      <router-view />
-    </main>
-  </div>
-</template>
+                  <router-link
+                    v-if="isAdmin"
+                    :to="{ name: 'ManageUsers' }"
+                    class="dropdown-item"
+                  >
+                    Manage Users
+                  </router-link>
 
-<script setup lang="ts">
-import { ref, computed } from "vue";
-import { logout } from "@/utils/auth";
+                  <router-link
+                    v-if="isAdmin"
+                    :to="{ name: 'OwnerApplications' }"
+                    class="dropdown-item"
+                  >
+                    Owner Applications
+                  </router-link>
 
-const sidebarOpen = ref(true);
+                  <router-link
+                    v-if="isAdmin"
+                    :to="{ name: 'ManageOwners' }"
+                    class="dropdown-item"
+                  >
+                    Manage Owners
+                  </router-link>
 
-const toggleSidebar = () => {
-  sidebarOpen.value = !sidebarOpen.value;
-};
+                  <router-link
+                    v-if="isAdmin"
+                    :to="{ name: 'DormApproval' }"
+                    class="dropdown-item"
+                  >
+                    Dormitory Approval
+                  </router-link>
 
-// 🔥 ดึง user ปัจจุบัน
-const currentUser = computed(() => {
-  return JSON.parse(localStorage.getItem("user") || "null");
-});
+                  <!-- OWNER -->
+                  <router-link
+                    v-if="isOwner"
+                    :to="{ name: 'OwnerDashboard' }"
+                    class="dropdown-item"
+                  >
+                    Owner Dashboard
+                  </router-link>
 
-const handleLogout = () => {
-  logout();
-};
-</script>
+                  <router-link
+                    v-if="isOwner"
+                    :to="{ name: 'OwnerPayments' }"
+                    class="dropdown-item"
+                  >
+                    Payment Dashboard
+                  </router-link>
 
+                  <!-- MEMBER -->
+                  <router-link
+                    v-if="isMember"
+                    :to="{ name: 'MemberHome' }"
+                    class="dropdown-item"
+                  >
+                    Home
+                  </router-link>
 
+                  <router-link
+                    v-if="isMember"
+                    :to="{ name: 'MemberDashboard' }"
+                    class="dropdown-item"
+                  >
+                    My Rentals
+                  </router-link>
+
+                  <router-link
+                    v-if="isMember"
+                    :to="{ name: 'MemberPayments' }"
+                    class="dropdown-item"
+                  >
+                    View All Payments
+                  </router-link>
+
+                  <router-link
+                    v-if="isMember"
+                    :to="{ name: 'applyowner' }"
+                    class="dropdown-item"
+                  >
+                    Apply to be Owner
+                  </router-link>
+
+                  <router-link
+                    v-if="isMember && approvedRequestId"
+                    :to="{ name: 'MemberContract', params: { requestId: approvedRequestId } }"
+                    class="dropdown-item"
+                  >
+                    ✍️ Make Contract
+                  </router-link>
+
+                  <button
+                    @click="handleLogout"
+                    class="text-red-500 dropdown-item"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </transition>
+            </div>
+
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="px-6 py-10 mx-auto max-w-7xl">
+        <router-view />
+      </main>
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  import { ref, onMounted, onBeforeUnmount, computed } from "vue"
+  import { useRouter } from "vue-router"
+  import axios from "axios"
+
+  const router = useRouter()
+
+  const currentUser = ref<any>(null)
+  const menuOpen = ref(false)
+  const showNotifications = ref(false)
+  const approvedRequestId = ref<number | null>(null)
+  const notifications = ref<any[]>([])
+
+  const isAdmin = computed(() => currentUser.value?.role === "ADMIN")
+  const isOwner = computed(() => currentUser.value?.role === "OWNER")
+  const isMember = computed(() => currentUser.value?.role === "MEMBER")
+
+  const unreadCount = computed(() =>
+    notifications.value.filter(n => !n.read).length
+  )
+
+  const toggleMenu = () => (menuOpen.value = !menuOpen.value)
+  const toggleNotifications = () => (showNotifications.value = !showNotifications.value)
+
+  const goHome = () => router.push({ name: "Home" })
+
+  const handleLogout = () => {
+    menuOpen.value = false
+    showNotifications.value = false
+    localStorage.removeItem("user")
+    router.push({ name: "Login" })
+  }
+
+  const goToNotification = (noti: any) => {
+    noti.read = true
+    showNotifications.value = false
+    router.push(noti.link)
+  }
+
+  const handleClickOutside = (e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest(".menu-wrapper")) menuOpen.value = false
+    if (!target.closest(".notification-wrapper")) showNotifications.value = false
+  }
+
+  onMounted(async () => {
+    const user = localStorage.getItem("user")
+    if (!user) return
+
+    currentUser.value = JSON.parse(user)
+
+    if (isMember.value) {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/rental/member/${currentUser.value.id}`
+        )
+
+        const approvedList = res.data.filter(
+          (r: any) => r.status === "APPROVED" && !r.leaseContract
+        )
+
+        if (approvedList.length > 0) {
+          approvedRequestId.value = approvedList[0].id
+
+          notifications.value = approvedList.map((r: any) => ({
+            id: r.id,
+            message: `คำขอเช่าห้อง ${r.room.roomNumber} ได้รับการอนุมัติ`,
+            link: { name: "MemberContract", params: { requestId: r.id } },
+            read: false,
+          }))
+        }
+      } catch (err) {
+        console.error("Fetch rental requests error:", err)
+      }
+    }
+
+    document.addEventListener("click", handleClickOutside)
+  })
+
+  onBeforeUnmount(() => {
+    document.removeEventListener("click", handleClickOutside)
+  })
+  </script>
+
+  <style scoped>
+  .dropdown-item {
+    @apply block px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer transition;
+  }
+
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: all 0.2s ease;
+  }
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  </style>

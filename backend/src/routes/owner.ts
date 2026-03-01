@@ -1,23 +1,57 @@
-import { Router } from "express";
+import { Router } from "express"
 import {
   applyOwner,
   getOwnerApplications,
   approveOwner,
   rejectOwner,
-} from "../controllers/owner.controller";
+  removeOwner,
+  getAllOwners,
+  getOwnerProfile,
+  updateOwnerProfile
+} from "../controllers/owner.controller"
 
-const router = Router();
+import { uploadOwnerDocs } from "../middleware/ownerUpload"
 
-// สมัครเป็นเจ้าของ
-router.post("/apply", applyOwner);
+const router = Router()
 
-// Admin ดูรายการสมัคร
-router.get("/applications", getOwnerApplications);
+/* =====================================================
+   OWNER APPLICATION FLOW
+===================================================== */
 
-// Admin อนุมัติ
-router.patch("/applications/:id/approve", approveOwner);
+// Member สมัครเป็นเจ้าของ (พร้อมอัปโหลดเอกสาร)
+router.post(
+  "/apply",
+  uploadOwnerDocs.fields([
+    { name: "idCardImage", maxCount: 1 },
+    { name: "businessLicense", maxCount: 1 }
+  ]),
+  applyOwner
+)
 
-// Admin ปฏิเสธ
-router.patch("/applications/:id/reject", rejectOwner);
+// Admin ดูรายการใบสมัครทั้งหมด
+router.get("/applications", getOwnerApplications)
 
-export default router;
+// Admin อนุมัติใบสมัคร
+router.patch("/applications/:id/approve", approveOwner)
+
+// Admin ปฏิเสธใบสมัคร
+router.patch("/applications/:id/reject", rejectOwner)
+
+/* =====================================================
+   OWNER PROFILE
+===================================================== */
+
+router.get("/profile/:userId", getOwnerProfile)
+router.put("/profile/:userId", updateOwnerProfile)
+
+/* =====================================================
+   MANAGE OWNERS (ADMIN)
+===================================================== */
+
+// Admin ดู owner ทั้งหมด
+router.get("/", getAllOwners)
+
+// Admin ลบสิทธิ์ owner
+router.delete("/:id", removeOwner)
+
+export default router

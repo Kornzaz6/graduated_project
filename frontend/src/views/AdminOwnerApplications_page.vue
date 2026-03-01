@@ -1,126 +1,225 @@
 <template>
-  <div class="min-h-screen p-6 bg-gray-100">
-    <div class="max-w-5xl p-6 mx-auto bg-white rounded shadow">
+  <div class="min-h-screen p-8 bg-gray-100">
 
-      <h2 class="mb-6 text-2xl font-bold">
-        Owner Applications (Admin)
-      </h2>
+    <div class="max-w-6xl p-8 mx-auto bg-white shadow-xl rounded-2xl">
 
-      <div v-if="loading" class="text-gray-500">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold">
+          Owner Applications
+        </h2>
+
+        <select
+          v-model="filterStatus"
+          class="px-3 py-2 border rounded-lg"
+        >
+          <option value="">All</option>
+          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="py-10 text-center text-gray-500">
         Loading applications...
       </div>
 
-      <table
-        v-else
-        class="min-w-full text-sm border"
+      <!-- Table -->
+      <div v-else class="overflow-x-auto rounded-xl">
+        <table class="min-w-full text-sm">
+          <thead class="text-gray-600 bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left">User</th>
+              <th class="px-6 py-3 text-left">Phone</th>
+              <th class="px-6 py-3 text-left">Message</th>
+              <th class="px-6 py-3 text-left">Date</th>
+              <th class="px-6 py-3 text-left">Status</th>
+              <th class="px-6 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="app in filteredApplications"
+              :key="app.id"
+              class="border-t hover:bg-gray-50"
+            >
+              <!-- User -->
+              <td class="px-6 py-4">
+                <div class="font-medium">
+                  {{ app.user.username }}
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ app.user.email }}
+                </div>
+              </td>
+
+              <!-- Phone -->
+              <td class="px-6 py-4">
+                {{ app.phone }}
+              </td>
+
+              <!-- Message -->
+              <td class="px-6 py-4 text-gray-600">
+                {{ app.message || "-" }}
+              </td>
+
+              <!-- Date -->
+              <td class="px-6 py-4 text-gray-500">
+                {{ formatDate(app.createdAt) }}
+              </td>
+
+              <!-- Status -->
+              <td class="px-6 py-4">
+                <span
+                  class="px-3 py-1 text-xs font-semibold rounded-full"
+                  :class="statusClass(app.status)"
+                >
+                  {{ app.status }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 space-x-2">
+
+                <template v-if="app.status === 'PENDING'">
+                  <button
+                    @click="confirmApprove(app.id)"
+                    class="px-3 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+                  >
+                    Approve
+                  </button>
+
+                  <button
+                    @click="confirmReject(app.id)"
+                    class="px-3 py-1 text-xs text-white bg-red-600 rounded hover:bg-red-700"
+                  >
+                    Reject
+                  </button>
+                </template>
+
+                <span
+                  v-else
+                  class="text-xs text-gray-400"
+                >
+                  No actions
+                </span>
+
+              </td>
+            </tr>
+
+            <tr v-if="filteredApplications.length === 0">
+              <td colspan="6" class="py-10 text-center text-gray-400">
+                No applications found
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Toast -->
+      <div
+        v-if="toast"
+        class="fixed px-6 py-3 text-white bg-black rounded-lg shadow-lg bottom-6 right-6"
       >
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="p-3 text-left border">User</th>
-            <th class="p-3 text-left border">Phone</th>
-            <th class="p-3 text-left border">Message</th>
-            <th class="p-3 text-left border">Status</th>
-            <th class="p-3 text-left border">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr
-            v-for="app in applications"
-            :key="app.id"
-            class="border-t"
-          >
-            <td class="p-3 border">
-              {{ app.user.username }} <br />
-              <span class="text-xs text-gray-500">
-                {{ app.user.email }}
-              </span>
-            </td>
-
-            <td class="p-3 border">
-              {{ app.phone }}
-            </td>
-
-            <td class="p-3 border">
-              {{ app.message }}
-            </td>
-
-            <td class="p-3 border">
-              <span
-                :class="{
-                  'text-yellow-600': app.status === 'PENDING',
-                  'text-green-600': app.status === 'APPROVED',
-                  'text-red-600': app.status === 'REJECTED'
-                }"
-              >
-                {{ app.status }}
-              </span>
-            </td>
-
-            <td class="p-3 space-x-2 border">
-
-              <button
-                v-if="app.status === 'PENDING'"
-                @click="approve(app.id)"
-                class="px-3 py-1 text-xs text-white bg-green-600 rounded"
-              >
-                Approve
-              </button>
-
-              <button
-                v-if="app.status === 'PENDING'"
-                @click="reject(app.id)"
-                class="px-3 py-1 text-xs text-white bg-red-600 rounded"
-              >
-                Reject
-              </button>
-
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        {{ toast }}
+      </div>
 
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue"
 
-const applications = ref<any[]>([]);
-const loading = ref(true);
+const applications = ref<any[]>([])
+const loading = ref(true)
+const filterStatus = ref("")
+const toast = ref("")
 
+/* ================= FETCH ================= */
 const fetchApplications = async () => {
   try {
+    loading.value = true
+
     const response = await fetch(
       "http://localhost:5000/api/owners/applications"
-    );
-    const data = await response.json();
-    applications.value = data;
-  } catch (error) {
-    console.error("Failed to fetch applications", error);
-  } finally {
-    loading.value = false;
-  }
-};
+    )
 
+    applications.value = await response.json()
+
+  } catch (error) {
+    console.error("Fetch error:", error)
+  } finally {
+    loading.value = false
+  }
+}
+
+/* ================= APPROVE ================= */
 const approve = async (id: number) => {
   await fetch(
     `http://localhost:5000/api/owners/applications/${id}/approve`,
     { method: "PATCH" }
-  );
-  fetchApplications();
-};
+  )
 
+  toastMessage("Application approved")
+  fetchApplications()
+}
+
+/* ================= REJECT ================= */
 const reject = async (id: number) => {
   await fetch(
     `http://localhost:5000/api/owners/applications/${id}/reject`,
     { method: "PATCH" }
-  );
-  fetchApplications();
-};
+  )
 
-onMounted(() => {
-  fetchApplications();
-});
+  toastMessage("Application rejected")
+  fetchApplications()
+}
+
+/* ================= CONFIRM ================= */
+const confirmApprove = (id: number) => {
+  if (confirm("Approve this application?")) {
+    approve(id)
+  }
+}
+
+const confirmReject = (id: number) => {
+  if (confirm("Reject this application?")) {
+    reject(id)
+  }
+}
+
+/* ================= FILTER ================= */
+const filteredApplications = computed(() => {
+  if (!filterStatus.value) return applications.value
+  return applications.value.filter(
+    app => app.status === filterStatus.value
+  )
+})
+
+/* ================= UTILS ================= */
+const statusClass = (status: string) => {
+  if (status === "PENDING")
+    return "bg-yellow-100 text-yellow-700"
+  if (status === "APPROVED")
+    return "bg-green-100 text-green-700"
+  if (status === "REJECTED")
+    return "bg-red-100 text-red-700"
+  return ""
+}
+
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString()
+
+const toastMessage = (message: string) => {
+  toast.value = message
+  setTimeout(() => {
+    toast.value = ""
+  }, 3000)
+}
+
+onMounted(fetchApplications)
 </script>

@@ -1,15 +1,15 @@
-import { Router } from "express";
-import {
-  createDormitory,
-  getDormitories,
-} from "../controllers/dormitory.controller";
-import { requireOwner } from "../middleware/requireOwner";
+import multer from "multer"
+import path from "path"
 
-const router = Router();
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + "-" + Math.round(Math.random() * 1e9)
+    cb(null, uniqueName + path.extname(file.originalname))
+  }
+})
 
-router.get("/", getDormitories);
-
-// 🔥 จำกัดสิทธิ์ตรงนี้
-router.post("/", requireOwner, createDormitory);
-
-export default router;
+export const uploadDormitoryImages = multer({
+  storage
+})

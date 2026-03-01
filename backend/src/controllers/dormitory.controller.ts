@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
+import { RoomStatus } from "@prisma/client";
 
 export const createDormitory = async (req: Request, res: Response) => {
   try {
@@ -11,10 +12,17 @@ export const createDormitory = async (req: Request, res: Response) => {
       latitude,
       longitude,
       roomCount,
-      userId, // 🔥 รับ userId แทน ownerId
+      userId,
     } = req.body;
 
-    // 🔎 1️⃣ หา owner จาก userId
+    if (!name || !type || !address || !userId) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
+    }
+
+    /* ================= 1️⃣ FIND OWNER ================= */
+
     const owner = await prisma.owner.findUnique({
       where: { userId: Number(userId) },
     });
@@ -25,20 +33,29 @@ export const createDormitory = async (req: Request, res: Response) => {
       });
     }
 
-    // 🏠 2️⃣ สร้าง dormitory
+    if (!owner.isActive) {
+      return res.status(403).json({
+        message: "Owner account is not active.",
+      });
+    }
+
+    /* ================= 2️⃣ CREATE DORMITORY (PENDING) ================= */
+
     const dormitory = await prisma.dormitory.create({
       data: {
-        name,
-        type,
-        address,
-        location,
+        name: name.trim(),
+        type: type.trim(),
+        address: address.trim(),
+        location: location?.trim() || null,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
-        ownerId: owner.id, // ✅ ใช้ owner.id จาก DB
+        ownerId: owner.id,
+        status: "PENDING", // 🔥 IMPORTANT
       },
     });
 
-    // 🖼 3️⃣ สร้างรูป (ถ้ามี)
+    /* ================= 3️⃣ SAVE IMAGES ================= */
+
     if (req.files && Array.isArray(req.files)) {
       const images = req.files.map((file: any) => ({
         imageUrl: `/uploads/${file.filename}`,
@@ -50,7 +67,8 @@ export const createDormitory = async (req: Request, res: Response) => {
       });
     }
 
-    // 🛏 4️⃣ สร้างห้องอัตโนมัติ
+    /* ================= 4️⃣ AUTO CREATE ROOMS ================= */
+
     const totalRooms = parseInt(roomCount) || 0;
 
     if (totalRooms > 0) {
@@ -61,7 +79,7 @@ export const createDormitory = async (req: Request, res: Response) => {
           roomNumber: `Room ${i}`,
           price: 0,
           size: 0,
-          status: "AVAILABLE",
+          status: RoomStatus.AVAILABLE,
           floor: 1,
           capacity: 1,
           dormitoryId: dormitory.id,
@@ -71,14 +89,22 @@ export const createDormitory = async (req: Request, res: Response) => {
       await prisma.room.createMany({ data: rooms });
     }
 
-    res.status(201).json({
-      message: "Dormitory created successfully",
-      dormitory,
+    /* ================= RESPONSE ================= */
+
+    return res.status(201).json({
+      message:
+        "Dormitory created successfully. Waiting for admin approval.",
+      dormitory: {
+        ...dormitory,
+        status: "PENDING",
+      },
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to create dormitory" });
+    console.error("CREATE DORMITORY ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to create dormitory",
+    });
   }
 };
 
@@ -110,7 +136,7 @@ export const getDormitories = async (req: Request, res: Response) => {
             : {},
           type
             ? {
-                type: String(type),
+                type: String(type), 
               }
             : {},
         ],
@@ -332,4 +358,210 @@ export const deleteRoom = async (req: Request, res: Response) => {
   }
 };
 
+export const getDormitoryById = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id)
 
+    const dormitory = await prisma.dormitory.findUnique({
+      where: { id },
+      include: {
+        rooms: true,
+        reviews: {
+          include: { user: true }
+        },
+        images: true
+      }
+    })
+
+    if (!dormitory) {
+      return res.status(404).json({ message: "Dormitory not found" })
+    }
+
+    res.json(dormitory)
+
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching dormitory" })
+  }
+}
+
+export const approveDormitory = async (req: Request, res: Response) => {
+  try {
+    const dormitoryId = Number(req.params.id)
+
+    if (!dormitoryId || isNaN(dormitoryId)) {
+      return res.status(400).json({
+        message: "Invalid dormitory id"
+      })
+    }
+
+    /* ================= AUTH CHECK ================= */
+
+    const user = (req as any).user
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Unauthorized - token missing"
+      })
+    }
+
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({
+        message: "Only admin can approve dormitory"
+      })
+    }
+
+    /* ================= APPROVE (SAFE UPDATE) ================= */
+
+    const updated = await prisma.dormitory.updateMany({
+      where: {
+        id: dormitoryId,
+        status: "PENDING"
+      },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedBy: user.id,
+        rejectedAt: null,
+        rejectionNote: null
+      }
+    })
+
+    if (updated.count === 0) {
+      return res.status(400).json({
+        message: "Dormitory not found or already processed"
+      })
+    }
+
+    return res.json({
+      message: "Dormitory approved successfully"
+    })
+
+  } catch (error) {
+    console.error("APPROVE DORMITORY ERROR:", error)
+    return res.status(500).json({
+      message: "Failed to approve dormitory"
+    })
+  }
+}
+
+export const rejectDormitory = async (req: Request, res: Response) => {
+  try {
+    const dormitoryId = Number(req.params.id)
+    const { rejectionNote } = req.body
+
+    if (!dormitoryId || isNaN(dormitoryId)) {
+      return res.status(400).json({
+        message: "Invalid dormitory id"
+      })
+    }
+
+    /* ================= CHECK ADMIN ================= */
+
+    const adminUser = (req as any).user
+
+    if (!adminUser || adminUser.role !== "ADMIN") {
+      return res.status(403).json({
+        message: "Only admin can reject dormitory"
+      })
+    }
+
+    /* ================= FIND DORMITORY ================= */
+
+    const dormitory = await prisma.dormitory.findUnique({
+      where: { id: dormitoryId }
+    })
+
+    if (!dormitory) {
+      return res.status(404).json({
+        message: "Dormitory not found"
+      })
+    }
+
+    if (dormitory.status !== "PENDING") {
+      return res.status(400).json({
+        message: "Dormitory already processed"
+      })
+    }
+
+    /* ================= REJECT ================= */
+
+    const updated = await prisma.dormitory.update({
+      where: { id: dormitoryId },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        rejectionNote: rejectionNote?.trim() || "No reason provided",
+        approvedAt: null,
+        approvedBy: null
+      }
+    })
+
+    return res.json({
+      message: "Dormitory rejected successfully",
+      dormitory: updated
+    })
+
+  } catch (error) {
+    console.error("REJECT DORMITORY ERROR:", error)
+    return res.status(500).json({
+      message: "Failed to reject dormitory"
+    })
+  }
+}
+
+export const getPendingDormitories = async (req: Request, res: Response) => {
+  try {
+    /* ================= OPTIONAL ADMIN CHECK ================= */
+
+    const adminUser = (req as any).user
+
+    // ถ้ามีระบบ auth แล้วค่อยเช็ค
+    if (adminUser) {
+      if (adminUser.role !== "ADMIN") {
+        return res.status(403).json({
+          message: "Only admin can view pending dormitories"
+        })
+      }
+    }
+
+    /* ================= FETCH ================= */
+
+    const dormitories = await prisma.dormitory.findMany({
+      where: {
+        status: "PENDING"
+      },
+      include: {
+        owner: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                username: true,
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        images: true,
+        rooms: {
+          select: {
+            id: true
+          }
+        }
+      },
+      orderBy: {
+        id: "desc"
+      }
+    })
+
+    return res.json(dormitories)
+
+  } catch (error) {
+    console.error("GET PENDING DORM ERROR:", error)
+    return res.status(500).json({
+      message: "Failed to fetch pending dormitories"
+    })
+  }
+}
