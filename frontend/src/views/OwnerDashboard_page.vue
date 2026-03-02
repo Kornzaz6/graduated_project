@@ -203,13 +203,16 @@ const showQR = ref(false)
 const qrImage = ref("")
 const qrAmount = ref(0)
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("token")
-  if (!token) return {}
 
-  return {
-    Authorization: `Bearer ${token}`
+  const headers: Record<string, string> = {}
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
+
+  return headers
 }
 
 /* ================= FETCH CONTRACTS ================= */

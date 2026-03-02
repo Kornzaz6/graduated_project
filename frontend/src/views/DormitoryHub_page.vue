@@ -195,8 +195,8 @@ const filteredDormitories = computed(() => {
       if (!d.latitude || !d.longitude) return false
 
       const distance = getDistanceKm(
-        selectedCenter.value.lat,
-        selectedCenter.value.lon,
+        selectedCenter.value?.lat || 0,
+        selectedCenter.value?.lon || 0,
         d.latitude,
         d.longitude,
       )

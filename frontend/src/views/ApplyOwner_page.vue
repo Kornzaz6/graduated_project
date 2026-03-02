@@ -185,9 +185,9 @@ onMounted(() => {
 
 const handleFile = (event: Event, field: "idCardImage" | "businessLicense") => {
   const input = event.target as HTMLInputElement
-  if (input.files && input.files.length > 0) {
-    files[field] = input.files[0]
-  }
+  if (input.files && input.files[0]) {
+  files[field] = input.files[0]
+}
 }
 
 const submitApplication = async () => {

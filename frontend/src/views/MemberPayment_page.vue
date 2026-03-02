@@ -153,14 +153,16 @@ const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 
 /* ================= AUTH ================= */
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("token")
 
-  if (!token) return {}
+  const headers: Record<string, string> = {}
 
-  return {
-    Authorization: `Bearer ${token}`
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
+
+  return headers
 }
 
 const handleUnauthorized = () => {

@@ -69,7 +69,7 @@
             <span
               v-for="(img, index) in dormitory.images"
               :key="index"
-              @click="goTo(index)"
+              @click="goTo(Number(index))"
               class="w-3 h-3 transition rounded-full cursor-pointer"
               :class="index === currentImage ? 'bg-blue-600 scale-125' : 'bg-white/60'"
             />

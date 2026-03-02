@@ -41,7 +41,7 @@
           <p>
             Available Rooms:
             {{
-              dorm.rooms.filter(r => r.status === "AVAILABLE").length
+              dorm.rooms.filter((r: any) => r.status === "AVAILABLE")
             }}
           </p>
         </div>

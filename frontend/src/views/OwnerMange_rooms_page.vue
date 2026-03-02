@@ -199,32 +199,53 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-const route = useRoute()
-const router = useRouter()
-
-const rooms = ref<any[]>([])
-const loading = ref(false)
-const dormId = Number(route.params.id)
-const bulkFloor = ref<number | null>(null)
+import api from '@/services/api'
 
 /* =====================================================
-   SELECTION STATE
+   TYPES
 ===================================================== */
-const selectedRooms = ref<number[]>([])
+interface Room {
+  id: number
+  roomNumber: string
+  price: number
+  size: number
+  floor: number
+  capacity: number
+  status: string
+}
 
-const isSelected = (id: number) => selectedRooms.value.includes(id)
+/* =====================================================
+   ROUTER
+===================================================== */
+const route = useRoute()
+const router = useRouter()
+const dormId = Number(route.params.id)
+
+/* =====================================================
+   STATE
+===================================================== */
+const rooms = ref<Room[]>([])
+const loading = ref(false)
+const bulkFloor = ref<number | null>(null)
+const selectedRooms = ref<number[]>([])
+const editingRoom = ref<Room | null>(null)
+
+/* =====================================================
+   SELECTION
+===================================================== */
+const isSelected = (id: number) =>
+  selectedRooms.value.includes(id)
 
 const toggleSelect = (id: number) => {
   if (isSelected(id)) {
-    selectedRooms.value = selectedRooms.value.filter((r) => r !== id)
+    selectedRooms.value = selectedRooms.value.filter(r => r !== id)
   } else {
     selectedRooms.value.push(id)
   }
 }
 
 const selectAll = () => {
-  selectedRooms.value = rooms.value.map((r) => r.id)
+  selectedRooms.value = rooms.value.map(r => r.id)
 }
 
 const clearSelection = () => {
@@ -232,20 +253,22 @@ const clearSelection = () => {
 }
 
 /* =====================================================
-   GROUP ROOMS BY FLOOR (เรียงชั้น + เรียงเลข)
+   GROUP ROOMS BY FLOOR
 ===================================================== */
 const groupedRooms = computed(() => {
-  const groups: Record<number, any[]> = {}
+  const groups: Record<number, Room[]> = {}
 
   const sorted = [...rooms.value].sort((a, b) => {
     if (a.floor !== b.floor) return a.floor - b.floor
-    return String(a.roomNumber).localeCompare(String(b.roomNumber))
+    return a.roomNumber.localeCompare(b.roomNumber)
   })
 
-  sorted.forEach((room) => {
-    if (!groups[room.floor]) groups[room.floor] = []
-    groups[room.floor].push(room)
-  })
+  for (const room of sorted) {
+    if (!groups[room.floor]) {
+      groups[room.floor] = []
+    }
+    groups[room.floor]!.push(room)
+  }
 
   return groups
 })
@@ -267,10 +290,8 @@ const form = reactive({
 })
 
 /* =====================================================
-   EDIT MODAL
+   EDIT FORM
 ===================================================== */
-const editingRoom = ref<any>(null)
-
 const editForm = reactive({
   roomNumber: '',
   price: '',
@@ -279,14 +300,14 @@ const editForm = reactive({
   capacity: '',
 })
 
-const openEdit = (room: any) => {
+const openEdit = (room: Room) => {
   editingRoom.value = room
 
   editForm.roomNumber = room.roomNumber
-  editForm.price = room.price
-  editForm.size = room.size
-  editForm.floor = room.floor
-  editForm.capacity = room.capacity
+  editForm.price = String(room.price)
+  editForm.size = String(room.size)
+  editForm.floor = String(room.floor)
+  editForm.capacity = String(room.capacity)
 }
 
 const saveEdit = async () => {
@@ -304,113 +325,13 @@ const saveEdit = async () => {
 }
 
 /* =====================================================
-   GENERIC UPDATE FUNCTION
-===================================================== */
-const updateRoom = async (id: number, payload: any) => {
-  await fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-
-  await fetchRooms()
-}
-
-/* =====================================================
-   BULK ACTIONS
-===================================================== */
-
-const bulkChangeStatus = async (status: string) => {
-  if (selectedRooms.value.length === 0) return
-
-  await Promise.all(
-    selectedRooms.value.map((id) =>
-      fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      }),
-    ),
-  )
-
-  clearSelection()
-  await fetchRooms()
-}
-
-const bulkChangeFloor = async (newFloor: number) => {
-  if (!newFloor) return
-
-  await Promise.all(
-    selectedRooms.value.map((id) =>
-      fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ floor: newFloor }),
-      }),
-    ),
-  )
-
-  clearSelection()
-  await fetchRooms()
-}
-
-const bulkSetFloor = async () => {
-  if (!bulkFloor.value || selectedRooms.value.length === 0) return
-
-  try {
-    await Promise.all(
-      selectedRooms.value.map((id) =>
-        fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ floor: Number(bulkFloor.value) }),
-        }),
-      ),
-    )
-
-    bulkFloor.value = null
-    clearSelection()
-    await fetchRooms()
-  } catch (err) {
-    console.error(err)
-    alert('Bulk floor update failed')
-  }
-}
-
-const bulkIncreasePrice = async (percent: number) => {
-  if (!percent) return
-
-  await Promise.all(
-    selectedRooms.value.map((id) => {
-      const room = rooms.value.find((r) => r.id === id)
-      if (!room) return
-
-      const newPrice = room.price + (room.price * percent) / 100
-
-      return fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price: newPrice }),
-      })
-    }),
-  )
-
-  clearSelection()
-  await fetchRooms()
-}
-
-/* =====================================================
-   FETCH ROOMS
+   API CALLS (AXIOS)
 ===================================================== */
 const fetchRooms = async () => {
   try {
     loading.value = true
-
-    const res = await fetch(`http://localhost:5000/api/dormitories/rooms/${dormId}`)
-
-    if (!res.ok) throw new Error('Failed to fetch rooms')
-
-    rooms.value = await res.json()
+    const { data } = await api.get(`/dormitories/rooms/${dormId}`)
+    rooms.value = data
   } catch (err) {
     console.error('Fetch rooms error:', err)
   } finally {
@@ -418,21 +339,14 @@ const fetchRooms = async () => {
   }
 }
 
-/* =====================================================
-   CREATE ROOM
-===================================================== */
 const createRoom = async () => {
-  await fetch('http://localhost:5000/api/dormitories/rooms', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      roomNumber: form.roomNumber,
-      price: Number(form.price),
-      size: Number(form.size),
-      floor: Number(form.floor),
-      capacity: Number(form.capacity),
-      dormitoryId: dormId,
-    }),
+  await api.post('/dormitories/rooms', {
+    roomNumber: form.roomNumber,
+    price: Number(form.price),
+    size: Number(form.size),
+    floor: Number(form.floor),
+    capacity: Number(form.capacity),
+    dormitoryId: dormId,
   })
 
   form.roomNumber = ''
@@ -444,19 +358,51 @@ const createRoom = async () => {
   await fetchRooms()
 }
 
-/* =====================================================
-   DELETE ROOM
-===================================================== */
+const updateRoom = async (id: number, payload: Partial<Room>) => {
+  await api.patch(`/dormitories/rooms/${id}`, payload)
+  await fetchRooms()
+}
+
 const deleteRoom = async (id: number) => {
   if (!confirm('Delete this room?')) return
-
-  await fetch(`http://localhost:5000/api/dormitories/rooms/${id}`, { method: 'DELETE' })
-
+  await api.delete(`/dormitories/rooms/${id}`)
   await fetchRooms()
 }
 
 /* =====================================================
-   ON MOUNT
+   BULK ACTIONS
+===================================================== */
+const bulkChangeStatus = async (status: string) => {
+  if (!selectedRooms.value.length) return
+
+  await Promise.all(
+    selectedRooms.value.map(id =>
+      api.patch(`/dormitories/rooms/${id}`, { status })
+    )
+  )
+
+  clearSelection()
+  await fetchRooms()
+}
+
+const bulkSetFloor = async () => {
+  if (!bulkFloor.value || !selectedRooms.value.length) return
+
+  await Promise.all(
+    selectedRooms.value.map(id =>
+      api.patch(`/dormitories/rooms/${id}`, {
+        floor: bulkFloor.value,
+      })
+    )
+  )
+
+  bulkFloor.value = null
+  clearSelection()
+  await fetchRooms()
+}
+
+/* =====================================================
+   MOUNT
 ===================================================== */
 onMounted(() => {
   if (!dormId || isNaN(dormId)) {

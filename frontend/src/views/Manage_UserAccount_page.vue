@@ -161,9 +161,9 @@ const updateRole = async (user: User) => {
 
     // อัปเดตค่าใน local state ให้ตรงกับ DB
     const index = users.value.findIndex(u => u.id === user.id);
-    if (index !== -1) {
-      users.value[index].role = data.role;
-    }
+    if (users.value[index]) {
+  users.value[index].role = data.role
+}
 
   } catch (error) {
     console.error("Update role error:", error);
