@@ -127,9 +127,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue"
 import L from "leaflet"
-
-/* ✅ ใช้ ENV แทน localhost */
-const backendURL = import.meta.env.VITE_API_URL
+import api from "@/services/api"
 
 const currentUser = JSON.parse(localStorage.getItem("user") || "{}")
 
@@ -234,20 +232,15 @@ const submitDormitory = async () => {
       }
     })
 
-    formData.append("userId", currentUser.id)
-
     files.value.forEach(file => {
       formData.append("images", file)
     })
 
-    const response = await fetch(`${backendURL}/dormitories`, {
-      method: "POST",
-      body: formData
+    await api.post("/dormitories", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
     })
-
-    const data = await response.json()
-
-    if (!response.ok) throw new Error(data.message)
 
     successMessage.value =
       "Dormitory submitted successfully. Waiting for admin approval."
@@ -255,7 +248,7 @@ const submitDormitory = async () => {
     resetForm()
 
   } catch (error: any) {
-    alert(error.message)
+    alert(error.response?.data?.message || "Submission failed")
   } finally {
     isSubmitting.value = false
   }
