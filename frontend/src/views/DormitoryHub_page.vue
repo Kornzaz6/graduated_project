@@ -78,6 +78,14 @@
       <h2 class="mb-6 text-2xl font-semibold">
         หอพักทั้งหมด
       </h2>
+      <!-- สมัครสมาชิก -->
+  <button
+    v-if="!isMember"
+    @click="goToRegister"
+    class="px-4 py-2 text-sm font-medium text-white transition rounded-full shadow-md bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-90"
+  >
+    สมัครสมาชิก
+  </button>
 
       <!-- ================= GRID ================= -->
       <TransitionGroup
@@ -161,6 +169,27 @@ let map: L.Map
 let universityMarker: L.Marker | null = null
 let radiusCircle: L.Circle | null = null
 let markers: L.Marker[] = []
+
+const currentUser = ref<any>(null)
+
+const isMember = computed(() =>
+  currentUser.value?.role === 'MEMBER'
+)
+
+const goToRegister = () => {
+  if (!currentUser.value) {
+    router.push('/login')
+    return
+  }
+  router.push('/register')
+}
+
+onMounted(() => {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    currentUser.value = JSON.parse(storedUser)
+  }
+})
 
 const goToDetail = (id: number) => {
   router.push(`/dormitories/${id}`)
