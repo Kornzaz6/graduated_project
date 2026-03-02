@@ -71,6 +71,10 @@ import { ref, onMounted, computed } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import api from "@/services/api"
 
+const currentUser = JSON.parse(
+  localStorage.getItem("user") || "null"
+)
+
 const route = useRoute()
 const router = useRouter()
 

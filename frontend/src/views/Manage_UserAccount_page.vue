@@ -146,9 +146,9 @@ const updateRole = async (user: User) => {
 
     const index = users.value.findIndex(u => u.id === user.id)
 
-    if (index !== -1 && data?.role) {
-      users.value[index].role = data.role
-    }
+ if (index !== -1 && users.value[index]) {
+  users.value[index]!.role = data.role
+}
 
   } catch (error) {
     console.error("Update role error:", error)

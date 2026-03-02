@@ -139,6 +139,7 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import axios from 'axios'
 import L from 'leaflet'
 import { useRouter } from 'vue-router'
+import api from '@/services/api'
 
 // =========================
 // STATE

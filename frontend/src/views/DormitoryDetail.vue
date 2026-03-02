@@ -41,11 +41,11 @@
           <!-- IMAGE -->
           <transition name="fade" mode="out-in">
             <img
-              :key="currentImage"
-              :src="backendURL + '/' + dormitory.images[currentImage].imageUrl"
-              class="object-cover w-full h-full cursor-pointer"
-              @click="openModal"
-            />
+  :key="currentImage"
+  :src="`${BASE_URL}${dormitory.images[currentImage].imageUrl}`"
+  class="object-cover w-full h-full cursor-pointer"
+  @click="openModal"
+/>
           </transition>
 
           <!-- LEFT -->
@@ -92,7 +92,7 @@
         <transition name="fade" mode="out-in">
           <img
             :key="'modal-' + currentImage"
-            :src="backendURL + '/' + dormitory.images[currentImage].imageUrl"
+            :src="`${BASE_URL}${dormitory.images[currentImage].imageUrl}`"
             class="max-w-[90%] max-h-[90%] object-contain"
           />
         </transition>
@@ -204,6 +204,8 @@
 import { onMounted, ref, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
+
+const BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 const route = useRoute()
 const router = useRouter()
