@@ -81,37 +81,59 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import axios from "axios";
+import { ref, onMounted } from "vue"
+import api from "@/services/api"
 
-const rentalRequests = ref<any[]>([]);
+const rentalRequests = ref<any[]>([])
+const loading = ref(false)
 
+/* ================= FETCH ================= */
 const fetchRequests = async () => {
-  const res = await axios.get("http://localhost:5000/api/rental");
-  rentalRequests.value = res.data;
-};
+  try {
+    loading.value = true
 
+    const { data } = await api.get("/rental")
+
+    rentalRequests.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error("Fetch rental requests error:", error)
+  } finally {
+    loading.value = false
+  }
+}
+
+/* ================= APPROVE ================= */
 const approve = async (id: number) => {
-  await axios.patch(`http://localhost:5000/api/rental/${id}/approve`);
-  fetchRequests();
-};
+  try {
+    await api.patch(`/rental/${id}/approve`)
+    await fetchRequests()
+  } catch (error) {
+    console.error("Approve error:", error)
+    alert("Failed to approve request")
+  }
+}
 
+/* ================= REJECT ================= */
 const reject = async (id: number) => {
-  await axios.patch(`http://localhost:5000/api/rental/${id}/reject`);
-  fetchRequests();
-};
+  try {
+    await api.patch(`/rental/${id}/reject`)
+    await fetchRequests()
+  } catch (error) {
+    console.error("Reject error:", error)
+    alert("Failed to reject request")
+  }
+}
 
+/* ================= UTILS ================= */
 const statusClass = (status: string) => {
-  if (status === "PENDING") return "bg-yellow-100 text-yellow-700";
-  if (status === "APPROVED") return "bg-green-100 text-green-700";
-  if (status === "REJECTED") return "bg-red-100 text-red-700";
-};
+  if (status === "PENDING") return "bg-yellow-100 text-yellow-700"
+  if (status === "APPROVED") return "bg-green-100 text-green-700"
+  if (status === "REJECTED") return "bg-red-100 text-red-700"
+  return ""
+}
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString("th-TH");
-};
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString("th-TH")
 
-onMounted(() => {
-  fetchRequests();
-});
+onMounted(fetchRequests)
 </script>

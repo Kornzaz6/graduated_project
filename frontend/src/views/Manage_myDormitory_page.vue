@@ -67,45 +67,50 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, ref } from "vue"
+import { useRouter } from "vue-router"
+import api from "@/services/api"
 
-const router = useRouter();
-const dormitories = ref<any[]>([]);
-const loading = ref(true);
+const router = useRouter()
 
-const user = JSON.parse(localStorage.getItem("user") || "{}");
+const dormitories = ref<any[]>([])
+const loading = ref(true)
+
+const user = JSON.parse(localStorage.getItem("user") || "null")
 
 const fetchMyDormitories = async () => {
-  try {
-    const response = await fetch(
-      `http://localhost:5000/api/dormitories/owner/${user.id}`
-    );
-
-    const data = await response.json();
-    dormitories.value = data;
-  } catch (error) {
-    console.error("Failed to fetch dormitories", error);
-  } finally {
-    loading.value = false;
+  if (!user?.id) {
+    loading.value = false
+    return
   }
-};
 
-onMounted(() => {
-  fetchMyDormitories();
-});
+  try {
+    const { data } = await api.get(
+      `/dormitories/owner/${user.id}`
+    )
+
+    dormitories.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error("Failed to fetch dormitories", error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchMyDormitories)
 
 const editDormitory = (id: number) => {
-  router.push(`/owner/edit-dormitory/${id}`);
-};
+  router.push(`/owner/edit-dormitory/${id}`)
+}
 
 const deleteDormitory = async (id: number) => {
-  if (!confirm("Are you sure?")) return;
+  if (!confirm("Are you sure?")) return
 
-  await fetch(`http://localhost:5000/api/dormitories/${id}`, {
-    method: "DELETE",
-  });
-
-  fetchMyDormitories();
-};
+  try {
+    await api.delete(`/dormitories/${id}`)
+    await fetchMyDormitories()
+  } catch (error) {
+    console.error("Delete failed", error)
+  }
+}
 </script>

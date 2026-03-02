@@ -105,6 +105,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue"
+import api from "@/services/api"
 
 const owners = ref<any[]>([])
 const loading = ref(true)
@@ -112,19 +113,18 @@ const search = ref("")
 const removingId = ref<number | null>(null)
 const toast = ref("")
 
-const currentUser = JSON.parse(localStorage.getItem("user") || "null")
+const currentUser = JSON.parse(
+  localStorage.getItem("user") || "null"
+)
 
 /* ================= FETCH ================= */
 const fetchOwners = async () => {
   try {
     loading.value = true
 
-    const response = await fetch(
-      "http://localhost:5000/api/owners"
-    )
+    const { data } = await api.get("/owners")
 
-    owners.value = await response.json()
-
+    owners.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error("Fetch owners error:", error)
   } finally {
@@ -139,8 +139,12 @@ const filteredOwners = computed(() => {
       owner.user.firstName + " " + owner.user.lastName
 
     return (
-      fullName.toLowerCase().includes(search.value.toLowerCase()) ||
-      owner.user.email.toLowerCase().includes(search.value.toLowerCase())
+      fullName
+        .toLowerCase()
+        .includes(search.value.toLowerCase()) ||
+      owner.user.email
+        .toLowerCase()
+        .includes(search.value.toLowerCase())
     )
   })
 })
@@ -161,18 +165,10 @@ const removeOwner = async (id: number) => {
   try {
     removingId.value = id
 
-    const response = await fetch(
-      `http://localhost:5000/api/owners/${id}`,
-      { method: "DELETE" }
-    )
-
-    if (!response.ok) {
-      throw new Error("Failed to remove owner")
-    }
+    await api.delete(`/owners/${id}`)
 
     toastMessage("Owner removed successfully")
-    fetchOwners()
-
+    await fetchOwners()
   } catch (error) {
     console.error(error)
     alert("Failed to remove owner")

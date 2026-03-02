@@ -206,6 +206,7 @@
   import { ref, onMounted, onBeforeUnmount, computed } from "vue"
   import { useRouter } from "vue-router"
   import axios from "axios"
+ import api from '@/services/api'
 
   const router = useRouter()
 
@@ -248,38 +249,40 @@
   }
 
   onMounted(async () => {
-    const user = localStorage.getItem("user")
-    if (!user) return
+  const user = localStorage.getItem("user")
+  if (!user) return
 
-    currentUser.value = JSON.parse(user)
+  currentUser.value = JSON.parse(user)
 
-    if (isMember.value) {
-      try {
-        const res = await axios.get(
-          `http://localhost:5000/api/rental/member/${currentUser.value.id}`
-        )
+  if (isMember.value && currentUser.value?.id) {
+    try {
+      const { data } = await api.get(
+        `/rental/member/${currentUser.value.id}`
+      )
 
-        const approvedList = res.data.filter(
-          (r: any) => r.status === "APPROVED" && !r.leaseContract
-        )
+      const list = Array.isArray(data) ? data : []
 
-        if (approvedList.length > 0) {
-          approvedRequestId.value = approvedList[0].id
+      const approvedList = list.filter(
+        (r: any) => r.status === "APPROVED" && !r.leaseContract
+      )
 
-          notifications.value = approvedList.map((r: any) => ({
-            id: r.id,
-            message: `คำขอเช่าห้อง ${r.room.roomNumber} ได้รับการอนุมัติ`,
-            link: { name: "MemberContract", params: { requestId: r.id } },
-            read: false,
-          }))
-        }
-      } catch (err) {
-        console.error("Fetch rental requests error:", err)
+      if (approvedList.length > 0) {
+        approvedRequestId.value = approvedList[0].id
+
+        notifications.value = approvedList.map((r: any) => ({
+          id: r.id,
+          message: `คำขอเช่าห้อง ${r.room.roomNumber} ได้รับการอนุมัติ`,
+          link: { name: "MemberContract", params: { requestId: r.id } },
+          read: false,
+        }))
       }
+    } catch (err) {
+      console.error("Fetch rental requests error:", err)
     }
+  }
 
-    document.addEventListener("click", handleClickOutside)
-  })
+  document.addEventListener("click", handleClickOutside)
+})
 
   onBeforeUnmount(() => {
     document.removeEventListener("click", handleClickOutside)

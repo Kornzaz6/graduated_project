@@ -133,7 +133,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue"
+import api from "@/services/api"
 
+/* ================= STATE ================= */
 const applications = ref<any[]>([])
 const loading = ref(true)
 const filterStatus = ref("")
@@ -144,11 +146,9 @@ const fetchApplications = async () => {
   try {
     loading.value = true
 
-    const response = await fetch(
-      "http://localhost:5000/api/owners/applications"
-    )
+    const { data } = await api.get("/owners/applications")
 
-    applications.value = await response.json()
+    applications.value = Array.isArray(data) ? data : []
 
   } catch (error) {
     console.error("Fetch error:", error)
@@ -159,24 +159,24 @@ const fetchApplications = async () => {
 
 /* ================= APPROVE ================= */
 const approve = async (id: number) => {
-  await fetch(
-    `http://localhost:5000/api/owners/applications/${id}/approve`,
-    { method: "PATCH" }
-  )
-
-  toastMessage("Application approved")
-  fetchApplications()
+  try {
+    await api.patch(`/owners/applications/${id}/approve`)
+    toastMessage("Application approved")
+    await fetchApplications()
+  } catch (err) {
+    console.error("Approve error:", err)
+  }
 }
 
 /* ================= REJECT ================= */
 const reject = async (id: number) => {
-  await fetch(
-    `http://localhost:5000/api/owners/applications/${id}/reject`,
-    { method: "PATCH" }
-  )
-
-  toastMessage("Application rejected")
-  fetchApplications()
+  try {
+    await api.patch(`/owners/applications/${id}/reject`)
+    toastMessage("Application rejected")
+    await fetchApplications()
+  } catch (err) {
+    console.error("Reject error:", err)
+  }
 }
 
 /* ================= CONFIRM ================= */
@@ -195,8 +195,9 @@ const confirmReject = (id: number) => {
 /* ================= FILTER ================= */
 const filteredApplications = computed(() => {
   if (!filterStatus.value) return applications.value
+
   return applications.value.filter(
-    app => app.status === filterStatus.value
+    (app) => app.status === filterStatus.value
   )
 })
 
@@ -204,10 +205,13 @@ const filteredApplications = computed(() => {
 const statusClass = (status: string) => {
   if (status === "PENDING")
     return "bg-yellow-100 text-yellow-700"
+
   if (status === "APPROVED")
     return "bg-green-100 text-green-700"
+
   if (status === "REJECTED")
     return "bg-red-100 text-red-700"
+
   return ""
 }
 
@@ -221,5 +225,6 @@ const toastMessage = (message: string) => {
   }, 3000)
 }
 
+/* ================= MOUNT ================= */
 onMounted(fetchApplications)
 </script>

@@ -201,9 +201,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -211,12 +211,12 @@ const router = useRouter()
 const dormitory = ref<any>(null)
 const currentUser = ref<any>(null)
 
-const backendURL = 'http://localhost:5000'
 const currentImage = ref(0)
 const isModalOpen = ref(false)
 
-let interval: any = null
+let interval: ReturnType<typeof setInterval> | null = null
 
+/* ================= IMAGE SLIDER ================= */
 const nextImage = () => {
   if (!dormitory.value?.images?.length) return
   currentImage.value =
@@ -240,9 +240,10 @@ const startAutoSlide = () => {
 }
 
 const pauseAutoSlide = () => {
-  clearInterval(interval)
+  if (interval) clearInterval(interval)
 }
 
+/* ================= MODAL ================= */
 const openModal = () => {
   isModalOpen.value = true
   document.body.style.overflow = "hidden"
@@ -253,34 +254,25 @@ const closeModal = () => {
   document.body.style.overflow = "auto"
 }
 
-onMounted(() => {
-  startAutoSlide()
+/* ================= USER ================= */
+const isMember = computed(() =>
+  currentUser.value?.role === 'MEMBER'
+)
 
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModal()
-  })
-})
-
-onMounted(() => {
-  clearInterval(interval)
-})
-
-onMounted(() => {
-  const storedUser = localStorage.getItem('user')
-  if (storedUser) {
-    currentUser.value = JSON.parse(storedUser)
+/* ================= FETCH DATA ================= */
+const fetchDormitory = async () => {
+  try {
+    const { data } = await api.get(
+      `/dormitories/${route.params.id}`
+    )
+    dormitory.value = data
+    startAutoSlide()
+  } catch (err) {
+    console.error("Fetch dormitory error:", err)
   }
-})
+}
 
-const isMember = computed(() => {
-  return currentUser.value?.role === 'MEMBER'
-})
-
-onMounted(async () => {
-  const res = await axios.get(`http://localhost:5000/api/dormitories/${route.params.id}`)
-  dormitory.value = res.data
-})
-
+/* ================= RENTAL REQUEST ================= */
 const requestRental = async (roomId: number) => {
   if (!currentUser.value) {
     alert('กรุณาเข้าสู่ระบบก่อน')
@@ -294,17 +286,19 @@ const requestRental = async (roomId: number) => {
   }
 
   try {
-    await axios.post('http://localhost:5000/api/rental/request', {
+    await api.post('/rental/request', {
       roomId,
       userId: currentUser.value.id,
     })
 
     alert('ส่งคำขอเช่าสำเร็จ 🎉')
-  } catch {
+  } catch (error) {
+    console.error(error)
     alert('เกิดข้อผิดพลาดในการส่งคำขอ')
   }
 }
 
+/* ================= NAVIGATION ================= */
 const goBack = () => {
   if (window.history.length > 1) {
     router.back()
@@ -313,9 +307,26 @@ const goBack = () => {
   }
 }
 
-const formatPrice = (price: number) => {
-  return Number(price).toLocaleString()
-}
+const formatPrice = (price: number) =>
+  Number(price).toLocaleString()
+
+/* ================= LIFECYCLE ================= */
+onMounted(() => {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    currentUser.value = JSON.parse(storedUser)
+  }
+
+  fetchDormitory()
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal()
+  })
+})
+
+onBeforeUnmount(() => {
+  pauseAutoSlide()
+})
 </script>
 
 <style scoped>

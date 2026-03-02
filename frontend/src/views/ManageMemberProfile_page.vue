@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue"
-import axios from "axios"
+import api from "@/services/api"
 
 const user = ref<any>(null)
 const loading = ref(false)
@@ -167,9 +167,9 @@ onMounted(() => {
   if (localUser) {
     user.value = JSON.parse(localUser)
 
-    form.firstName = user.value.firstName
-    form.lastName = user.value.lastName
-    form.email = user.value.email
+    form.firstName = user.value?.firstName || ""
+    form.lastName = user.value?.lastName || ""
+    form.email = user.value?.email || ""
   }
 })
 
@@ -177,24 +177,27 @@ onMounted(() => {
    UPDATE PROFILE
 ========================================= */
 const updateProfile = async () => {
-  if (!user.value) return
+  if (!user.value?.id) return
 
   try {
     loading.value = true
 
-    const res = await axios.patch(
-      `http://localhost:5000/api/users/${user.value.id}`,
+    const { data } = await api.patch(
+      `/users/${user.value.id}`,
       form
     )
 
-    user.value = res.data
+    user.value = data
 
-    localStorage.setItem("user", JSON.stringify(res.data))
+    localStorage.setItem("user", JSON.stringify(data))
 
     alert("Profile updated successfully")
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    alert("Update failed")
+    alert(
+      err?.response?.data?.message ||
+      "Update failed"
+    )
   } finally {
     loading.value = false
   }
@@ -215,14 +218,16 @@ const resetForm = () => {
    CHANGE PASSWORD
 ========================================= */
 const changePassword = async () => {
+  if (!user.value?.id) return
+
   if (passwordForm.password !== passwordForm.confirmPassword) {
     alert("Passwords do not match")
     return
   }
 
   try {
-    await axios.patch(
-      `http://localhost:5000/api/users/change-password/${user.value.id}`,
+    await api.patch(
+      `/users/change-password/${user.value.id}`,
       { password: passwordForm.password }
     )
 
@@ -230,9 +235,12 @@ const changePassword = async () => {
     passwordForm.confirmPassword = ""
 
     alert("Password updated successfully")
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    alert("Failed to update password")
+    alert(
+      err?.response?.data?.message ||
+      "Failed to update password"
+    )
   }
 }
 </script>

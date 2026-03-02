@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">
+  <div class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
+      <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">
         Register
       </h2>
 
@@ -16,7 +16,7 @@
             type="text"
             required
             placeholder="Enter your username"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -30,7 +30,7 @@
             type="text"
             required
             placeholder="Enter your first name"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -44,7 +44,7 @@
             type="text"
             required
             placeholder="Enter your last name"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -58,7 +58,7 @@
             type="email"
             required
             placeholder="example@email.com"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -72,7 +72,7 @@
             type="password"
             required
             placeholder="Enter password"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -86,25 +86,25 @@
             type="password"
             required
             placeholder="Confirm password"
-            class="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <!-- Error Message -->
-        <p v-if="error" class="text-red-500 text-sm">
+        <p v-if="error" class="text-sm text-red-500">
           {{ error }}
         </p>
 
         <!-- Submit Button -->
         <button
           type="submit"
-          class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+          class="w-full py-2 text-white transition bg-blue-600 rounded-md hover:bg-blue-700"
         >
           Register
         </button>
       </form>
 
-      <p class="text-sm text-center mt-4 text-gray-600">
+      <p class="mt-4 text-sm text-center text-gray-600">
         Already have an account?
         <router-link to="/login" class="text-blue-600 hover:underline">
           Login
@@ -115,10 +115,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { reactive, ref } from "vue"
+import { useRouter } from "vue-router"
+import api from "@/services/api"
 
-const router = useRouter();
+const router = useRouter()
 
 const form = reactive({
   username: "",
@@ -127,45 +128,40 @@ const form = reactive({
   email: "",
   password: "",
   confirmPassword: "",
-});
+})
 
-const error = ref("");
+const error = ref("")
+const loading = ref(false)
 
 const handleRegister = async () => {
-  error.value = "";
+  error.value = ""
 
   // ✅ check password match
   if (form.password !== form.confirmPassword) {
-    error.value = "Passwords do not match";
-    return;
+    error.value = "Passwords do not match"
+    return
   }
 
   try {
-    const response = await fetch("http://localhost:5000/api/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: form.username,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        password: form.password,
-      }),
-    });
+    loading.value = true
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      error.value = data.message || "Registration failed";
-      return;
-    }
+    await api.post("/auth/register", {
+      username: form.username,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+    })
 
     // ✅ register success → go to login
-    router.push("/login");
-  } catch (err) {
-    error.value = "Cannot connect to server";
+    router.push("/login")
+
+  } catch (err: any) {
+    error.value =
+      err?.response?.data?.message ||
+      "Registration failed or server unavailable"
+  } finally {
+    loading.value = false
   }
-};
+}
 </script>

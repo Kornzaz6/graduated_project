@@ -144,7 +144,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,24 +154,11 @@ const paymentId = Number(route.params.paymentId)
 const payment = ref<any>(null)
 const loading = ref(true)
 
-/* ================= AXIOS INSTANCE ================= */
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
 /* ================= FETCH PAYMENT ================= */
 const fetchPayment = async () => {
   try {
-    const res = await api.get(`/payments/${paymentId}`)
-    payment.value = res.data
+    const { data } = await api.get(`/payments/${paymentId}`)
+    payment.value = data
   } catch (err) {
     console.error('Fetch payment error:', err)
   } finally {
@@ -185,8 +172,9 @@ const confirmPayment = async () => {
     await api.patch(`/payments/${paymentId}/confirm`)
     alert('Payment confirmed')
     router.push({ name: 'OwnerPayments' })
-  } catch (err) {
+  } catch (err: any) {
     console.error('Confirm error:', err)
+    alert(err?.response?.data?.message || 'Failed to confirm payment')
   }
 }
 
@@ -199,19 +187,14 @@ const rejectPayment = async () => {
     await api.patch(`/payments/${paymentId}/reject`, { reason })
     alert('Payment rejected')
     router.push({ name: 'OwnerPayments' })
-  } catch (err) {
+  } catch (err: any) {
     console.error('Reject error:', err)
+    alert(err?.response?.data?.message || 'Failed to reject payment')
   }
 }
 
-const formatDate = (date: string) => new Date(date).toLocaleDateString()
-
-// const statusColor = (status: string) => {
-//   if (status === 'VERIFIED') return 'text-green-600'
-//   if (status === 'REJECTED') return 'text-red-600'
-//   if (status === 'VERIFYING') return 'text-yellow-600'
-//   return 'text-gray-600'
-// }
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString()
 
 const statusBadge = (status: string) => {
   switch (status) {

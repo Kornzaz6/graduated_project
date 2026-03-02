@@ -104,116 +104,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed } from "vue"
+import api from "@/services/api"
 
 interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
+  id: number
+  username: string
+  email: string
+  role: string
+  isActive: boolean
+  createdAt: string
 }
 
-const users = ref<User[]>([]);
-const search = ref("");
-const filterRole = ref("");
-const loading = ref(false);
+const users = ref<User[]>([])
+const search = ref("")
+const filterRole = ref("")
+const loading = ref(false)
 
 /* ================= FETCH USERS ================= */
 const fetchUsers = async () => {
   try {
-    loading.value = true;
+    loading.value = true
 
-    const response = await fetch(
-      "http://localhost:5000/api/users"
-    );
+    const { data } = await api.get("/users")
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch users");
-    }
-
-    users.value = await response.json();
+    users.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error("Fetch users error:", error);
+    console.error("Fetch users error:", error)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 /* ================= UPDATE ROLE ================= */
 const updateRole = async (user: User) => {
   try {
-    const response = await fetch(
-      `http://localhost:5000/api/users/${user.id}/role`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: user.role }),
-      }
-    );
+    const { data } = await api.patch(
+      `/users/${user.id}/role`,
+      { role: user.role }
+    )
 
-    if (!response.ok) {
-      throw new Error("Failed to update role");
+    const index = users.value.findIndex(u => u.id === user.id)
+
+    if (index !== -1 && data?.role) {
+      users.value[index].role = data.role
     }
 
-    const data = await response.json();
-
-    // อัปเดตค่าใน local state ให้ตรงกับ DB
-    const index = users.value.findIndex(u => u.id === user.id);
-    if (users.value[index]) {
-  users.value[index].role = data.role
-}
-
   } catch (error) {
-    console.error("Update role error:", error);
-    alert("Failed to update role");
-    fetchUsers(); // rollback
+    console.error("Update role error:", error)
+    alert("Failed to update role")
+    await fetchUsers() // rollback
   }
-};
+}
 
 /* ================= TOGGLE STATUS ================= */
 const toggleStatus = async (user: User) => {
-  const newStatus = !user.isActive;
+  const newStatus = !user.isActive
 
   try {
-    const response = await fetch(
-      `http://localhost:5000/api/users/${user.id}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: newStatus }),
-      }
-    );
+    await api.patch(
+      `/users/${user.id}/status`,
+      { isActive: newStatus }
+    )
 
-    if (!response.ok) {
-      throw new Error("Failed to update status");
-    }
-
-    user.isActive = newStatus;
+    user.isActive = newStatus
 
   } catch (error) {
-    console.error("Toggle status error:", error);
-    alert("Failed to update status");
+    console.error("Toggle status error:", error)
+    alert("Failed to update status")
   }
-};
+}
 
 /* ================= FILTER ================= */
 const filteredUsers = computed(() => {
   return users.value.filter((u) => {
     const matchSearch =
       u.username.toLowerCase().includes(search.value.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.value.toLowerCase());
+      u.email.toLowerCase().includes(search.value.toLowerCase())
 
     const matchRole =
-      filterRole.value === "" || u.role === filterRole.value;
+      filterRole.value === "" || u.role === filterRole.value
 
-    return matchSearch && matchRole;
-  });
-});
+    return matchSearch && matchRole
+  })
+})
 
 const formatDate = (date: string) =>
-  new Date(date).toLocaleDateString();
+  new Date(date).toLocaleDateString()
 
-onMounted(fetchUsers);
+onMounted(fetchUsers)
 </script>

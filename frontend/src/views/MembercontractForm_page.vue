@@ -68,15 +68,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue"
-import axios from "axios"
 import { useRoute, useRouter } from "vue-router"
+import api from "@/services/api"
 
 const route = useRoute()
 const router = useRouter()
 
 const requestId = Number(route.params.requestId)
-
-const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 
 const startDate = ref("")
 const duration = ref(6)
@@ -86,33 +84,48 @@ const deposit = ref(0)
 
 const roomInfo = ref<any>(null)
 
+/* ================= CALCULATE END DATE ================= */
 const calculatedEndDate = computed(() => {
   if (!startDate.value) return "-"
+
   const start = new Date(startDate.value)
   const end = new Date(start)
   end.setMonth(end.getMonth() + duration.value)
+
   return end.toLocaleDateString("th-TH")
 })
 
-// โหลดข้อมูล request + room
+/* ================= FETCH REQUEST ================= */
 const fetchRequest = async () => {
-  const res = await axios.get(`http://localhost:5000/api/rental`)
-  const request = res.data.find((r: any) => r.id === requestId)
+  try {
+    const { data } = await api.get("/rental")
 
-  if (!request) return
+    const list = Array.isArray(data) ? data : []
 
-  roomInfo.value = request.room
-  monthlyRent.value = request.room.price
-  deposit.value = request.room.price
+    const request = list.find(
+      (r: any) => r.id === requestId
+    )
+
+    if (!request) return
+
+    roomInfo.value = request.room
+    monthlyRent.value = request.room.price
+    deposit.value = request.room.price
+
+  } catch (error) {
+    console.error("Fetch request error:", error)
+  }
 }
 
+/* ================= SUBMIT CONTRACT ================= */
 const submitContract = async () => {
   try {
     if (!startDate.value) {
-      return alert("กรุณาเลือกวันที่เริ่มสัญญา")
+      alert("กรุณาเลือกวันที่เริ่มสัญญา")
+      return
     }
 
-    await axios.post("http://localhost:5000/api/rental/contract", {
+    await api.post("/rental/contract", {
       requestId,
       startDate: startDate.value,
       duration: duration.value,
@@ -124,7 +137,10 @@ const submitContract = async () => {
     router.push("/member/dashboard")
 
   } catch (error: any) {
-    alert(error.response?.data?.message || "เกิดข้อผิดพลาด")
+    alert(
+      error?.response?.data?.message ||
+      "เกิดข้อผิดพลาด"
+    )
   }
 }
 

@@ -142,6 +142,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
+import api from "@/services/api"
 
 const router = useRouter()
 
@@ -171,6 +172,7 @@ const files = reactive<{
 
 onMounted(() => {
   const user = localStorage.getItem("user")
+
   if (!user) {
     router.push("/login")
     return
@@ -178,16 +180,18 @@ onMounted(() => {
 
   currentUser.value = JSON.parse(user)
 
-  form.firstName = currentUser.value.firstName || ""
-  form.lastName = currentUser.value.lastName || ""
-  form.email = currentUser.value.email || ""
+  form.firstName = currentUser.value?.firstName || ""
+  form.lastName = currentUser.value?.lastName || ""
+  form.email = currentUser.value?.email || ""
 })
 
-const handleFile = (event: Event, field: "idCardImage" | "businessLicense") => {
+const handleFile = (
+  event: Event,
+  field: "idCardImage" | "businessLicense"
+) => {
   const input = event.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-  files[field] = input.files[0]
-}
+  const file = input.files?.[0] ?? null
+  files[field] = file
 }
 
 const submitApplication = async () => {
@@ -199,12 +203,17 @@ const submitApplication = async () => {
     return
   }
 
+  if (!currentUser.value?.id) {
+    errorMessage.value = "User not found."
+    return
+  }
+
   try {
     loading.value = true
 
     const formData = new FormData()
 
-    formData.append("userId", currentUser.value.id)
+    formData.append("userId", String(currentUser.value.id))
     formData.append("firstName", form.firstName)
     formData.append("lastName", form.lastName)
     formData.append("email", form.email)
@@ -222,23 +231,18 @@ const submitApplication = async () => {
       formData.append("businessLicense", files.businessLicense)
     }
 
-    const response = await fetch(
-      "http://localhost:5000/api/owners/apply",
-      {
-        method: "POST",
-        body: formData,
-      }
+    const { data } = await api.post(
+      "/owners/apply",
+      formData
     )
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.message || "Application failed")
-    }
-
     statusMessage.value = "Application submitted successfully!"
+
   } catch (error: any) {
-    errorMessage.value = error.message
+    errorMessage.value =
+      error?.response?.data?.message ||
+      error.message ||
+      "Application failed"
   } finally {
     loading.value = false
   }

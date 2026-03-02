@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue"
 import { useRouter } from "vue-router"
+import api from "@/services/api"
 
 const router = useRouter()
 
@@ -82,20 +83,7 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-    const response = await fetch("http://localhost:5000/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      error.value = data.message || "Login failed"
-      return
-    }
+    const { data } = await api.post("/auth/login", form)
 
     /* ================= SAVE TOKEN ================= */
 
@@ -119,8 +107,10 @@ const handleLogin = async () => {
       router.push("/")
     }
 
-  } catch (err) {
-    error.value = "Cannot connect to server"
+  } catch (err: any) {
+    error.value =
+      err?.response?.data?.message ||
+      "Login failed or server unavailable"
   } finally {
     loading.value = false
   }

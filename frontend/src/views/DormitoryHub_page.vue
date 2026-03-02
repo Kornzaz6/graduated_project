@@ -268,9 +268,15 @@ const initMap = () => {
 // FETCH DORMITORIES
 // =========================
 const fetchDormitories = async () => {
-  const res = await axios.get('http://localhost:5000/api/dormitories')
-  dormitories.value = res.data
-  loadMarkers()
+  try {
+    const { data } = await api.get('/dormitories')
+
+    dormitories.value = Array.isArray(data) ? data : []
+
+    loadMarkers()
+  } catch (error) {
+    console.error('Failed to fetch dormitories:', error)
+  }
 }
 
 // =========================

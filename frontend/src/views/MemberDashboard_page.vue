@@ -33,17 +33,27 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue"
-import axios from "axios"
+import api from "@/services/api"
 
 const requests = ref<any[]>([])
 
-const currentUser = JSON.parse(localStorage.getItem("user") || "null")
+const currentUser = JSON.parse(
+  localStorage.getItem("user") || "null"
+)
 
 const fetchRequests = async () => {
-  const res = await axios.get(
-    `http://localhost:5000/api/rental/member/${currentUser.id}`
-  )
-  requests.value = res.data
+  if (!currentUser?.id) return
+
+  try {
+    const { data } = await api.get(
+      `/rental/member/${currentUser.id}`
+    )
+
+    requests.value = Array.isArray(data) ? data : []
+
+  } catch (error) {
+    console.error("Fetch member requests error:", error)
+  }
 }
 
 onMounted(fetchRequests)

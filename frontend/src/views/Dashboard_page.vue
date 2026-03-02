@@ -140,6 +140,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import api from "@/services/api";
 
 const router = useRouter();
 
@@ -158,13 +159,12 @@ onMounted(() => {
 
 const fetchUsers = async () => {
   try {
-    const response = await fetch("http://localhost:5000/api/users");
-    const data = await response.json();
-    users.value = data;
+    const { data } = await api.get("/users")
+    users.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error("Failed to fetch users", error);
+    console.error("Failed to fetch users", error)
   }
-};
+}
 
 // summary
 const memberCount = computed(
