@@ -128,7 +128,9 @@
 import { onMounted, reactive, ref } from "vue"
 import L from "leaflet"
 
-const backendURL = "http://localhost:5000"
+/* ✅ ใช้ ENV แทน localhost */
+const backendURL = import.meta.env.VITE_API_URL
+
 const currentUser = JSON.parse(localStorage.getItem("user") || "{}")
 
 if (!currentUser || currentUser.role !== "OWNER") {
@@ -206,7 +208,6 @@ const reverseGeocode = async (lat: number, lng: number) => {
       .filter(Boolean)
       .join(", ")
 
-    // ถ้า formattedAddress ว่าง → fallback เป็น display_name
     form.address = formattedAddress || data.display_name || ""
 
   } catch (error) {
@@ -228,7 +229,9 @@ const submitDormitory = async () => {
     const formData = new FormData()
 
     Object.entries(form).forEach(([key, value]) => {
-      formData.append(key, String(value))
+      if (value !== null) {
+        formData.append(key, String(value))
+      }
     })
 
     formData.append("userId", currentUser.id)
@@ -237,7 +240,7 @@ const submitDormitory = async () => {
       formData.append("images", file)
     })
 
-    const response = await fetch(`${backendURL}/api/dormitories`, {
+    const response = await fetch(`${backendURL}/dormitories`, {
       method: "POST",
       body: formData
     })
