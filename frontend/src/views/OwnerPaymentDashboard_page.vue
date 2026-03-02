@@ -153,17 +153,16 @@ const newPayment = ref({
 })
 
 /* ================= HELPER ================= */
-const getAuthHeaders = () => {
+const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("token")
 
-  if (!token) {
-    console.error("No token found in localStorage")
-    return {}
+  const headers: Record<string, string> = {}
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
-  return {
-    Authorization: `Bearer ${token}`
-  }
+  return headers
 }
 
 /* ================= FETCH CONTRACTS ================= */
