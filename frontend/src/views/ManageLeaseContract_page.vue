@@ -82,93 +82,140 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ref, onMounted } from "vue"
+import api from "@/services/api"
+
+/* ================= STATE ================= */
 
 const contracts = ref<any[]>([])
 const loading = ref(true)
-const error = ref('')
+const error = ref("")
 
-const backendURL = "http://localhost:5000"
-
-const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 
 /* ================= FETCH CONTRACTS ================= */
+
 const fetchContracts = async () => {
+
   if (!currentUser?.id) {
-    error.value = 'User not found'
+    error.value = "User not found"
     loading.value = false
     return
   }
 
   try {
-    loading.value = true
 
-    const res = await axios.get(
-      `${backendURL}/api/lease/owner/${currentUser.id}`
+    loading.value = true
+    error.value = ""
+
+    const res = await api.get(
+      `/lease/owner/${currentUser.id}`
     )
 
     contracts.value = res.data
 
-  } catch (err) {
-    console.error('Fetch owner contracts error:', err)
-    error.value = 'Failed to load contracts'
+  } catch (err: any) {
+
+    console.error("Fetch owner contracts error:", err)
+
+    error.value =
+      err.response?.data?.message ||
+      "Failed to load contracts"
+
   } finally {
+
     loading.value = false
+
   }
+
 }
 
 /* ================= APPROVE CONTRACT ================= */
+
 const approveContract = async (id: number) => {
+
+  if (!confirm("Approve this contract?")) return
+
   try {
-    await axios.patch(
-      `${backendURL}/api/rental/contracts/${id}/approve`
+
+    await api.patch(
+      `/rental/contracts/${id}/approve`
     )
 
     alert("Contract approved successfully")
 
     fetchContracts()
 
-  } catch (error) {
-    console.error('Approve error:', error)
-    alert("Failed to approve contract")
+  } catch (err: any) {
+
+    console.error("Approve error:", err)
+
+    alert(
+      err.response?.data?.message ||
+      "Failed to approve contract"
+    )
+
   }
+
 }
 
 /* ================= TERMINATE CONTRACT ================= */
+
 const terminateContract = async (id: number) => {
+
+  if (!confirm("Terminate this contract?")) return
+
   try {
-    await axios.patch(
-      `${backendURL}/api/rental/contracts/${id}/terminate`
+
+    await api.patch(
+      `/rental/contracts/${id}/terminate`
     )
 
     alert("Contract terminated")
 
     fetchContracts()
 
-  } catch (error) {
-    console.error('Terminate error:', error)
-    alert("Failed to terminate contract")
+  } catch (err: any) {
+
+    console.error("Terminate error:", err)
+
+    alert(
+      err.response?.data?.message ||
+      "Failed to terminate contract"
+    )
+
   }
+
 }
 
 /* ================= UTIL ================= */
+
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('th-TH')
+  return new Date(date).toLocaleDateString("th-TH")
 }
 
 const statusClass = (status: string) => {
+
   switch (status) {
-    case 'ACTIVE':
-      return 'bg-green-100 text-green-700'
-    case 'WAITING_OWNER_APPROVAL':
-      return 'bg-yellow-100 text-yellow-700'
-    case 'TERMINATED':
-      return 'bg-red-100 text-red-700'
+
+    case "ACTIVE":
+      return "bg-green-100 text-green-700"
+
+    case "WAITING_OWNER_APPROVAL":
+      return "bg-yellow-100 text-yellow-700"
+
+    case "TERMINATED":
+      return "bg-red-100 text-red-700"
+
     default:
-      return 'bg-gray-100 text-gray-600'
+      return "bg-gray-100 text-gray-600"
+
   }
+
 }
 
+/* ================= INIT ================= */
+
 onMounted(fetchContracts)
+
 </script>

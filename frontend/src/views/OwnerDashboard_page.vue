@@ -180,9 +180,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue"
+import api from "@/services/api"
 
-const backendURL = "http://localhost:5000"
 const currentUser = JSON.parse(localStorage.getItem("user") || "null")
+
+/* ================= STATE ================= */
 
 const contracts = ref<any[]>([])
 const selectedContractId = ref("")
@@ -203,7 +205,10 @@ const showQR = ref(false)
 const qrImage = ref("")
 const qrAmount = ref(0)
 
+/* ================= AUTH ================= */
+
 const getAuthHeaders = (): Record<string, string> => {
+
   const token = localStorage.getItem("token")
 
   const headers: Record<string, string> = {}
@@ -216,34 +221,55 @@ const getAuthHeaders = (): Record<string, string> => {
 }
 
 /* ================= FETCH CONTRACTS ================= */
+
 const fetchContracts = async () => {
-  const res = await fetch(
-  `${backendURL}/api/lease/owner/${currentUser.id}`,
-  {
-    headers: getAuthHeaders()
+
+  try {
+
+    const res = await api.get(
+      `/lease/owner/${currentUser.id}`,
+      { headers: getAuthHeaders() }
+    )
+
+    contracts.value = res.data
+
+  } catch (error: any) {
+
+    console.error("Fetch contracts error:", error)
+
   }
-)
-  contracts.value = await res.json()
+
 }
 
 /* ================= FETCH PAYMENTS ================= */
+
 const fetchPayments = async () => {
+
   if (!selectedContractId.value) return
 
-  const res = await fetch(
-  `${backendURL}/api/payments/contract/${selectedContractId.value}`,
-  {
-    headers: getAuthHeaders()
+  try {
+
+    const res = await api.get(
+      `/payments/contract/${selectedContractId.value}`,
+      { headers: getAuthHeaders() }
+    )
+
+    payments.value = res.data
+
+    calculateSummary()
+
+  } catch (error) {
+
+    console.error("Fetch payments error:", error)
+
   }
-)
 
-  payments.value = await res.json()
-
-  calculateSummary()
 }
 
 /* ================= SUMMARY ================= */
+
 const calculateSummary = () => {
+
   totalIncome.value = payments.value
     .filter((p: any) => p.status === "CONFIRMED")
     .reduce((sum: number, p: any) => sum + p.amount, 0)
@@ -255,75 +281,129 @@ const calculateSummary = () => {
   confirmedCount.value = payments.value.filter(
     (p: any) => p.status === "CONFIRMED"
   ).length
+
 }
 
 /* ================= CREATE BILL ================= */
+
 const createBill = async () => {
+
   if (!selectedContractId.value) return
 
-  await fetch(`${backendURL}/api/payments/owner/create`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    ...getAuthHeaders()
-  },
-  body: JSON.stringify({
-    contractId: selectedContractId.value,
-    ...billForm.value
-  })
-})
+  try {
 
-  fetchPayments()
+    await api.post(
+      `/payments/owner/create`,
+      {
+        contractId: selectedContractId.value,
+        ...billForm.value
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        }
+      }
+    )
+
+    fetchPayments()
+
+  } catch (error: any) {
+
+    console.error("Create bill error:", error)
+
+    alert(
+      error.response?.data?.message ||
+      "Failed to create bill"
+    )
+
+  }
+
 }
 
 /* ================= GENERATE CUSTOM QR ================= */
+
 const generateCustomQR = async () => {
-  const res = await fetch(`${backendURL}/api/payments/owner/generate-qr`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    ...getAuthHeaders()
-  },
-  body: JSON.stringify({
-    ownerId: currentUser.id,
-    amount: customAmount.value
-  })
-})
 
-  const data = await res.json()
+  try {
 
-  qrImage.value = data.qr
-  qrAmount.value = data.amount
-  showQR.value = true
+    const res = await api.post(
+      `/payments/owner/generate-qr`,
+      {
+        ownerId: currentUser.id,
+        amount: customAmount.value
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        }
+      }
+    )
+
+    qrImage.value = res.data.qr
+    qrAmount.value = res.data.amount
+
+    showQR.value = true
+
+  } catch (error: any) {
+
+    console.error("QR error:", error)
+
+    alert(
+      error.response?.data?.message ||
+      "Failed to generate QR"
+    )
+
+  }
+
 }
 
+/* ================= CLOSE QR ================= */
+
 const closeQR = () => {
+
   showQR.value = false
   qrImage.value = ""
+
 }
 
 /* ================= UTIL ================= */
+
 const formatMonth = (date: string) => {
+
   return new Date(date).toLocaleDateString("th-TH", {
     month: "long",
     year: "numeric"
   })
+
 }
 
 const statusColor = (status: string) => {
+
   switch (status) {
+
     case "PENDING":
       return "px-2 py-1 text-xs bg-gray-100 rounded"
+
     case "CONFIRMED":
       return "px-2 py-1 text-xs text-white bg-green-600 rounded"
+
     default:
       return "px-2 py-1 text-xs bg-yellow-100 rounded"
+
   }
+
 }
+
+/* ================= WATCH ================= */
 
 watch(selectedContractId, fetchPayments)
 
+/* ================= INIT ================= */
+
 onMounted(fetchContracts)
+
 </script>
 
 <style scoped>

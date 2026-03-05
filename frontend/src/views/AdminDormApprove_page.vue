@@ -57,7 +57,7 @@
             <img
               v-for="img in dorm.images"
               :key="img.id"
-              :src="backendURL + img.imageUrl"
+              :src="BASE_URL + img.imageUrl"
               class="object-cover w-40 rounded-lg shadow h-28"
             />
           </div>
@@ -140,9 +140,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
+import api from "@/services/api"
 
 const router = useRouter()
-const backendURL = "http://localhost:5000"
 
 const dormitories = ref<any[]>([])
 const loading = ref(true)
@@ -152,7 +152,9 @@ const showReject = ref(false)
 const rejectDormId = ref<number | null>(null)
 const rejectReason = ref("")
 
-/* ================= HELPER ================= */
+const BASE_URL = import.meta.env.VITE_BACKEND_URL
+
+/* ================= AUTH HEADER ================= */
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token")
@@ -163,7 +165,6 @@ const getAuthHeaders = () => {
   }
 
   return {
-    "Content-Type": "application/json",
     Authorization: `Bearer ${token}`
   }
 }
@@ -173,119 +174,133 @@ const getAuthHeaders = () => {
 const handleUnauthorized = () => {
   localStorage.removeItem("token")
   localStorage.removeItem("user")
+
   alert("Session expired. Please login again.")
   router.push("/login")
 }
 
-/* ================= FETCH ================= */
+/* ================= FETCH PENDING DORMITORIES ================= */
 
 const fetchDorms = async () => {
   try {
+
     loading.value = true
     errorMessage.value = ""
 
-    const res = await fetch(
-      `${backendURL}/api/dormitories/pending`,
-      {
-        headers: getAuthHeaders()
-      }
-    )
+    const res = await api.get("/dormitories/pending", {
+      headers: getAuthHeaders()
+    })
 
-    if (res.status === 401) {
+    dormitories.value = res.data
+
+  } catch (err: any) {
+
+    console.error("Fetch error:", err)
+
+    if (err.response?.status === 401) {
       handleUnauthorized()
       return
     }
 
-    if (!res.ok) {
-      const err = await res.json()
-      errorMessage.value = err.message || "Failed to load dormitories"
-      dormitories.value = []
-      return
-    }
+    errorMessage.value =
+      err.response?.data?.message ||
+      "Failed to load dormitories"
 
-    dormitories.value = await res.json()
+    dormitories.value = []
 
-  } catch (err) {
-    console.error("Fetch error:", err)
-    errorMessage.value = "Cannot connect to server"
   } finally {
+
     loading.value = false
+
   }
 }
 
 /* ================= APPROVE ================= */
 
 const approveDorm = async (id: number) => {
+
   if (!confirm("Approve this dormitory?")) return
 
   try {
-    const res = await fetch(
-      `${backendURL}/api/dormitories/${id}/approve`,
+
+    await api.patch(
+      `/dormitories/${id}/approve`,
+      {},
       {
-        method: "PATCH",
         headers: getAuthHeaders()
       }
     )
 
-    if (res.status === 401) {
+    fetchDorms()
+
+  } catch (err: any) {
+
+    console.error("Approve error:", err)
+
+    if (err.response?.status === 401) {
       handleUnauthorized()
       return
     }
 
-    if (!res.ok) {
-      const err = await res.json()
-      alert(err.message || "Approve failed")
-      return
-    }
+    alert(
+      err.response?.data?.message ||
+      "Approve failed"
+    )
 
-    fetchDorms()
-
-  } catch (err) {
-    console.error("Approve error:", err)
   }
+
 }
 
 /* ================= REJECT ================= */
 
 const openRejectModal = (id: number) => {
+
   rejectDormId.value = id
   rejectReason.value = ""
   showReject.value = true
+
 }
 
 const confirmReject = async () => {
+
   if (!rejectDormId.value) return
 
   try {
-    const res = await fetch(
-      `${backendURL}/api/dormitories/${rejectDormId.value}/reject`,
+
+    await api.patch(
+      `/dormitories/${rejectDormId.value}/reject`,
       {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          rejectionNote: rejectReason.value
-        })
+        rejectionNote: rejectReason.value
+      },
+      {
+        headers: getAuthHeaders()
       }
     )
 
-    if (res.status === 401) {
+    showReject.value = false
+
+    fetchDorms()
+
+  } catch (err: any) {
+
+    console.error("Reject error:", err)
+
+    if (err.response?.status === 401) {
       handleUnauthorized()
       return
     }
 
-    if (!res.ok) {
-      const err = await res.json()
-      alert(err.message || "Reject failed")
-      return
-    }
+    alert(
+      err.response?.data?.message ||
+      "Reject failed"
+    )
 
-    showReject.value = false
-    fetchDorms()
-
-  } catch (err) {
-    console.error("Reject error:", err)
   }
+
 }
 
+/* ================= INIT ================= */
+
 onMounted(fetchDorms)
+
 </script>

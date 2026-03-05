@@ -134,15 +134,17 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from "vue"
+import api from "@/services/api"
 
-const backendURL = "http://localhost:5000"
 const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 
 const loading = ref(true)
 const saving = ref(false)
+
 const successMessage = ref("")
 const errorMessage = ref("")
 const accountError = ref("")
+
 const showAccount = ref(false)
 
 const rawAccount = ref("")
@@ -151,99 +153,138 @@ const detectedBank = ref("")
 /* ================= BANK CONFIG ================= */
 
 const bankConfig: Record<string, any> = {
+
   KBANK: {
     label: "Kasikorn Bank",
     format: [3,1,5,1],
     length: 10,
     prefixes: ["01","02","03","10","11"]
   },
+
   SCB: {
     label: "SCB",
     format: [3,6,1],
     length: 10,
     prefixes: ["4"]
   },
+
   BBL: {
     label: "Bangkok Bank",
     format: [3,3,4],
     length: 10,
     prefixes: ["2"]
   },
+
   KTB: {
     label: "Krungthai Bank",
     format: [3,1,5,1],
     length: 10,
     prefixes: ["6"]
   },
+
   TTB: {
     label: "TMBThanachart",
     format: [3,1,5,1],
     length: 10,
     prefixes: ["3"]
   }
+
 }
 
 /* ================= FORM ================= */
 
 const form = reactive({
+
   firstName: "",
   lastName: "",
   phone: "",
+
   bankName: "",
   bankAccountName: "",
   bankAccountNo: "",
+
   paymentType: "BANK"
+
 })
 
 /* ================= DETECT BANK ================= */
 
 const detectBank = (digits: string) => {
+
   for (const key in bankConfig) {
+
     const bank = bankConfig[key]
-    if (bank.prefixes.some((prefix: string) => digits.startsWith(prefix))) {
+
+    if (bank.prefixes.some((prefix: string) =>
+      digits.startsWith(prefix))) {
+
       return key
+
     }
+
   }
+
   return ""
+
 }
 
 watch(rawAccount, (val) => {
+
   const bank = detectBank(val)
+
   detectedBank.value = bank
 
   if (bank) {
     form.bankName = bank
   }
+
 })
 
-/* ================= FORMAT ================= */
+/* ================= FORMAT ACCOUNT ================= */
 
 const formatAccount = (digits: string, bankKey: string) => {
+
   const bank = bankConfig[bankKey]
+
   if (!bank) return digits
 
   const pattern = bank.format
+
   let result = ""
   let index = 0
 
   for (let group of pattern) {
+
     if (digits.length > index) {
+
       result += digits.slice(index, index + group)
+
       index += group
+
       if (index < digits.length) result += "-"
+
     }
+
   }
 
   return result
+
 }
 
 const formattedAccount = computed({
+
   get() {
+
     return formatAccount(rawAccount.value, form.bankName)
+
   },
+
   set(value: string) {
+
     rawAccount.value = value.replace(/\D/g, "")
+
   }
+
 })
 
 /* ================= VALIDATE ================= */
@@ -253,55 +294,85 @@ const validateAccount = () => {
   if (form.paymentType === "BANK") {
 
     if (!form.bankName) {
+
       accountError.value = "กรุณาเลือกธนาคาร"
+
       return false
+
     }
 
     const requiredLength = bankConfig[form.bankName].length
 
     if (rawAccount.value.length !== requiredLength) {
-      accountError.value = `เลขบัญชีต้องมี ${requiredLength} หลัก`
+
+      accountError.value =
+        `เลขบัญชีต้องมี ${requiredLength} หลัก`
+
       return false
+
     }
 
-  } else {
+  }
 
-    // PROMPTPAY
+  else {
+
     if (!/^\d{10}$|^\d{13}$/.test(rawAccount.value)) {
+
       accountError.value =
         "PromptPay ต้องเป็นเบอร์ 10 หลัก หรือ บัตรประชาชน 13 หลัก"
+
       return false
+
     }
 
   }
 
   accountError.value = ""
+
   return true
+
 }
 
-/* ================= FETCH ================= */
+/* ================= FETCH PROFILE ================= */
 
 const fetchProfile = async () => {
+
   try {
-    const res = await fetch(
-      `${backendURL}/api/owners/profile/${currentUser.id}`
+
+    const res = await api.get(
+      `/owners/profile/${currentUser.id}`
     )
-    const data = await res.json()
+
+    const data = res.data
 
     Object.assign(form, data)
+
     rawAccount.value = data.bankAccountNo || ""
 
-  } catch (err) {
-    console.error(err)
-  } finally {
-    loading.value = false
   }
+
+  catch (error) {
+
+    console.error("Fetch profile error:", error)
+
+    errorMessage.value = "Failed to load profile"
+
+  }
+
+  finally {
+
+    loading.value = false
+
+  }
+
 }
 
-/* ================= SAVE ================= */
+/* ================= SAVE PROFILE ================= */
 
 const saveProfile = async () => {
+
   try {
+
     successMessage.value = ""
     errorMessage.value = ""
 
@@ -309,28 +380,35 @@ const saveProfile = async () => {
 
     saving.value = true
 
-    const res = await fetch(
-      `${backendURL}/api/owners/profile/${currentUser.id}`,
+    await api.put(
+      `/owners/profile/${currentUser.id}`,
       {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          bankAccountNo: rawAccount.value,
-          paymentType: form.paymentType
-        })
+        ...form,
+        bankAccountNo: rawAccount.value,
+        paymentType: form.paymentType
       }
     )
 
-    if (!res.ok) throw new Error("Update failed")
-
     successMessage.value = "บันทึกข้อมูลเรียบร้อย"
 
-  } catch (error: any) {
-    errorMessage.value = error.message
-  } finally {
-    saving.value = false
   }
+
+  catch (error: any) {
+
+    console.error("Save profile error:", error)
+
+    errorMessage.value =
+      error.response?.data?.message ||
+      "Update failed"
+
+  }
+
+  finally {
+
+    saving.value = false
+
+  }
+
 }
 
 onMounted(fetchProfile)

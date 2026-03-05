@@ -137,11 +137,13 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue"
+import api from "@/services/api"
 
-const backendURL = "http://localhost:5000"
+/* ================= STATE ================= */
 
 const payments = ref<any[]>([])
 const contracts = ref<any[]>([])
+
 const loading = ref(false)
 const creating = ref(false)
 
@@ -152,8 +154,10 @@ const newPayment = ref({
   dueDate: ""
 })
 
-/* ================= HELPER ================= */
+/* ================= AUTH ================= */
+
 const getAuthHeaders = (): Record<string, string> => {
+
   const token = localStorage.getItem("token")
 
   const headers: Record<string, string> = {}
@@ -163,141 +167,182 @@ const getAuthHeaders = (): Record<string, string> => {
   }
 
   return headers
+
 }
 
 /* ================= FETCH CONTRACTS ================= */
+
 const fetchContracts = async () => {
+
   const user = JSON.parse(localStorage.getItem("user") || "null")
   if (!user) return
 
   try {
-    const res = await fetch(
-      `${backendURL}/api/owners/${user.id}/contracts`,
-      {
-        headers: getAuthHeaders()
-      }
+
+    const res = await api.get(
+      `/owners/${user.id}/contracts`,
+      { headers: getAuthHeaders() }
     )
 
-    if (!res.ok) {
-      contracts.value = []
-      return
-    }
+    const data = res.data
 
-    const data = await res.json()
     contracts.value = Array.isArray(data) ? data : []
 
   } catch (err) {
+
     console.error("Fetch contracts error:", err)
+
     contracts.value = []
+
   }
+
 }
 
 /* ================= FETCH PAYMENTS ================= */
+
 const fetchPayments = async () => {
+
   if (!selectedContractId.value) {
+
     payments.value = []
     return
+
   }
 
   try {
+
     loading.value = true
 
-    const res = await fetch(
-      `${backendURL}/api/payments/contract/${selectedContractId.value}`,
-      {
-        headers: getAuthHeaders()
-      }
+    const res = await api.get(
+      `/payments/contract/${selectedContractId.value}`,
+      { headers: getAuthHeaders() }
     )
 
-    if (!res.ok) {
-      payments.value = []
-      return
-    }
+    const data = res.data
 
-    const data = await res.json()
     payments.value = Array.isArray(data) ? data : []
 
   } catch (err) {
+
     console.error("Fetch payments error:", err)
+
     payments.value = []
+
   } finally {
+
     loading.value = false
+
   }
+
 }
 
 /* ================= CREATE PAYMENT ================= */
+
 const createPayment = async () => {
 
-  if (!selectedContractId.value ||
-      !newPayment.value.amount ||
-      !newPayment.value.dueDate) {
+  if (
+    !selectedContractId.value ||
+    !newPayment.value.amount ||
+    !newPayment.value.dueDate
+  ) {
+
     alert("Please fill all fields")
     return
+
   }
 
   creating.value = true
 
   try {
-    const res = await fetch(`${backendURL}/api/payments/owner/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeaders()
-      },
-      body: JSON.stringify({
+
+    await api.post(
+      `/payments/owner/create`,
+      {
         contractId: Number(selectedContractId.value),
         amount: Number(newPayment.value.amount),
         billingMonth: new Date(),
         dueDate: newPayment.value.dueDate
-      })
-    })
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        }
+      }
+    )
 
-    if (res.ok) {
-      newPayment.value.amount = ""
-      newPayment.value.dueDate = ""
-      fetchPayments()
-    }
+    newPayment.value.amount = ""
+    newPayment.value.dueDate = ""
+
+    fetchPayments()
 
   } catch (err) {
+
     console.error("Create payment error:", err)
+
+    alert("Failed to create payment")
+
   } finally {
+
     creating.value = false
+
   }
+
 }
 
 /* ================= WATCH CONTRACT CHANGE ================= */
+
 watch(selectedContractId, () => {
+
   fetchPayments()
+
 })
 
 /* ================= UTIL ================= */
+
 const formatMonth = (date: string) => {
+
   if (!date) return "-"
+
   return new Date(date).toLocaleString("default", {
     month: "long",
     year: "numeric"
   })
+
 }
 
 const statusColor = (status: string) => {
+
   switch (status) {
+
     case "PENDING":
       return "bg-gray-100 text-gray-800"
+
     case "VERIFYING":
       return "bg-blue-100 text-blue-800"
+
     case "VERIFIED":
       return "bg-yellow-100 text-yellow-800"
+
     case "CONFIRMED":
       return "bg-green-100 text-green-800"
+
     case "REJECTED":
       return "bg-red-100 text-red-800"
+
     default:
       return ""
+
   }
+
 }
 
+/* ================= INIT ================= */
+
 onMounted(() => {
+
   fetchContracts()
+
 })
 </script>
 

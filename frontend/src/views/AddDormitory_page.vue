@@ -127,14 +127,17 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue"
 import L from "leaflet"
-import  api  from "@/services/api"
+import api from "@/services/api"
 
-const backendURL = "http://localhost:5000"
+/* ================= USER ================= */
+
 const currentUser = JSON.parse(localStorage.getItem("user") || "{}")
 
 if (!currentUser || currentUser.role !== "OWNER") {
   alert("Access denied. Only owners can create dormitories.")
 }
+
+/* ================= FORM ================= */
 
 const form = reactive({
   name: "",
@@ -156,11 +159,18 @@ let map: L.Map
 let marker: L.Marker | null = null
 
 onMounted(() => {
+
   map = L.map("map").setView([13.7367, 100.5231], 15)
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map)
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      attribution: "&copy; OpenStreetMap contributors"
+    }
+  ).addTo(map)
 
   map.on("click", async (e: any) => {
+
     const { lat, lng } = e.latlng
 
     form.latitude = Number(lat.toFixed(8))
@@ -174,6 +184,7 @@ onMounted(() => {
 
     await reverseGeocode(lat, lng)
   })
+
 })
 
 /* ================= FILE HANDLER ================= */
@@ -185,7 +196,9 @@ const handleFiles = (event: any) => {
 /* ================= REVERSE GEOCODE ================= */
 
 const reverseGeocode = async (lat: number, lng: number) => {
+
   try {
+
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
     )
@@ -207,18 +220,22 @@ const reverseGeocode = async (lat: number, lng: number) => {
       .filter(Boolean)
       .join(", ")
 
-    // ถ้า formattedAddress ว่าง → fallback เป็น display_name
     form.address = formattedAddress || data.display_name || ""
 
   } catch (error) {
+
     console.error("Reverse geocode error:", error)
+
   }
+
 }
 
 /* ================= SUBMIT ================= */
 
 const submitDormitory = async () => {
+
   try {
+
     if (!form.name || !form.type || !form.address) {
       alert("Please complete all required fields")
       return
@@ -238,14 +255,11 @@ const submitDormitory = async () => {
       formData.append("images", file)
     })
 
-    const response = await fetch(`${backendURL}/api/dormitories`, {
-      method: "POST",
-      body: formData
+    await api.post("/dormitories", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
     })
-
-    const data = await response.json()
-
-    if (!response.ok) throw new Error(data.message)
 
     successMessage.value =
       "Dormitory submitted successfully. Waiting for admin approval."
@@ -253,15 +267,26 @@ const submitDormitory = async () => {
     resetForm()
 
   } catch (error: any) {
-    alert(error.message)
+
+    console.error("Submit dormitory error:", error)
+
+    alert(
+      error?.response?.data?.message ||
+      "Failed to submit dormitory"
+    )
+
   } finally {
+
     isSubmitting.value = false
+
   }
+
 }
 
 /* ================= RESET ================= */
 
 const resetForm = () => {
+
   form.name = ""
   form.type = ""
   form.address = ""
@@ -269,12 +294,14 @@ const resetForm = () => {
   form.latitude = null
   form.longitude = null
   form.roomCount = 1
+
   files.value = []
 
   if (marker) {
     map.removeLayer(marker)
     marker = null
   }
+
 }
 </script>
 

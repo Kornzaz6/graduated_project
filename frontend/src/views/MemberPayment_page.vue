@@ -88,10 +88,10 @@
 
             <!-- Slip Preview -->
             <img
-              v-if="payment.slipImageUrl"
-              :src="backendURL + '/' + payment.slipImageUrl + '?t=' + Date.now()"
-              class="object-cover w-16 h-16 border rounded"
-            />
+  v-if="payment.slipImageUrl"
+  :src="`${BASE_URL}/${payment.slipImageUrl}?t=${Date.now()}`"
+  class="object-cover w-16 h-16 border rounded"
+/>
 
           </div>
 
@@ -142,10 +142,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue"
 import { useRoute, useRouter } from "vue-router"
+import api from "@/services/api"
+
+const BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 const payments = ref<any[]>([])
 const loading = ref(true)
-const backendURL = "http://localhost:5000"
+
 const route = useRoute()
 const router = useRouter()
 
@@ -154,6 +157,7 @@ const currentUser = JSON.parse(localStorage.getItem("user") || "null")
 /* ================= AUTH ================= */
 
 const getAuthHeaders = (): Record<string, string> => {
+
   const token = localStorage.getItem("token")
 
   const headers: Record<string, string> = {}
@@ -166,15 +170,20 @@ const getAuthHeaders = (): Record<string, string> => {
 }
 
 const handleUnauthorized = () => {
+
   localStorage.removeItem("token")
   localStorage.removeItem("user")
+
   router.push("/login")
+
 }
 
 /* ================= FETCH PAYMENTS ================= */
 
 const fetchPayments = async () => {
+
   try {
+
     loading.value = true
 
     let contractId: number | null = null
@@ -183,16 +192,16 @@ const fetchPayments = async () => {
       contractId = Number(route.params.contractId)
     }
 
+    /* ================= FIND ACTIVE CONTRACT ================= */
+
     if (!contractId && currentUser?.id) {
-      const res = await fetch(
-        `${backendURL}/api/rental/member/${currentUser.id}`,
+
+      const res = await api.get(
+        `/rental/member/${currentUser.id}`,
         { headers: getAuthHeaders() }
       )
 
-      if (res.status === 401) return handleUnauthorized()
-      if (!res.ok) return
-
-      const requests = await res.json()
+      const requests = res.data
 
       const activeRequest = requests.find(
         (r: any) => r.leaseContract?.status === "ACTIVE"
@@ -204,6 +213,7 @@ const fetchPayments = async () => {
       }
 
       contractId = activeRequest.leaseContract.id
+
     }
 
     if (!contractId) {
@@ -211,31 +221,41 @@ const fetchPayments = async () => {
       return
     }
 
-    const res = await fetch(
-      `${backendURL}/api/payments/contract/${contractId}`,
+    /* ================= FETCH PAYMENTS ================= */
+
+    const res = await api.get(
+      `/payments/contract/${contractId}`,
       { headers: getAuthHeaders() }
     )
 
-    if (res.status === 401) return handleUnauthorized()
-    if (!res.ok) return
+    payments.value = Array.isArray(res.data) ? res.data : []
 
-    const data = await res.json()
-    payments.value = Array.isArray(data) ? data : []
+  } catch (error: any) {
 
-  } catch (error) {
     console.error(error)
+
+    if (error.response?.status === 401) {
+      handleUnauthorized()
+    }
+
   } finally {
+
     loading.value = false
+
   }
+
 }
 
 /* ================= SORT ================= */
 
 const sortedPayments = computed(() => {
-  return [...payments.value].sort((a, b) =>
-    new Date(a.billingMonth).getTime() -
-    new Date(b.billingMonth).getTime()
+
+  return [...payments.value].sort(
+    (a, b) =>
+      new Date(a.billingMonth).getTime() -
+      new Date(b.billingMonth).getTime()
   )
+
 })
 
 /* ================= QR ================= */
@@ -246,37 +266,45 @@ const selectedPayment = ref<any>(null)
 const ownerInfo = ref<any>(null)
 
 const openQR = async (payment: any) => {
+
   try {
+
     selectedPayment.value = payment
 
-    const res = await fetch(
-      `${backendURL}/api/payments/contract/${payment.contractId}/qr`,
+    const res = await api.get(
+      `/payments/contract/${payment.contractId}/qr`,
       { headers: getAuthHeaders() }
     )
 
-    if (res.status === 401) return handleUnauthorized()
-    if (!res.ok) return
+    qrImage.value = res.data.qr
+    ownerInfo.value = res.data.owner || null
 
-    const data = await res.json()
-
-    qrImage.value = data.qr
-    ownerInfo.value = data.owner || null
     showQR.value = true
 
-  } catch (err) {
-    console.error(err)
+  } catch (error: any) {
+
+    console.error(error)
+
+    if (error.response?.status === 401) {
+      handleUnauthorized()
+    }
+
   }
+
 }
 
 const closeQR = () => {
+
   showQR.value = false
   qrImage.value = ""
   ownerInfo.value = null
+
 }
 
-/* ================= UPLOAD ================= */
+/* ================= UPLOAD SLIP ================= */
 
 const handleFileUpload = async (event: any, paymentId: number) => {
+
   const file = event.target.files[0]
   if (!file) return
 
@@ -284,32 +312,38 @@ const handleFileUpload = async (event: any, paymentId: number) => {
   formData.append("slip", file)
 
   try {
-    const res = await fetch(
-      `${backendURL}/api/payments/${paymentId}/upload-slip`,
+
+    const token = localStorage.getItem("token")
+
+    await api.post(
+      `/payments/${paymentId}/upload-slip`,
+      formData,
       {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: formData
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data"
+        }
       }
     )
 
-    if (res.status === 401) return handleUnauthorized()
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      alert(data.message || "Upload failed")
-      return
-    }
-
-    // refresh หลัง verify async
+    /* refresh after async verify */
     setTimeout(fetchPayments, 1500)
 
-  } catch (err) {
-    console.error(err)
+  } catch (error: any) {
+
+    console.error(error)
+
+    alert(
+      error.response?.data?.message ||
+      "Upload failed"
+    )
+
   } finally {
-    event.target.value = "" // clear file input
+
+    event.target.value = ""
+
   }
+
 }
 
 /* ================= UTIL ================= */
@@ -330,28 +364,37 @@ const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("th-TH")
 
 const statusLabel = (status: string) => {
+
   switch (status) {
+
     case "PENDING": return "รอชำระ"
     case "VERIFYING": return "กำลังตรวจสอบ"
     case "VERIFIED": return "รอยืนยันจากเจ้าของ"
     case "CONFIRMED": return "ชำระเรียบร้อย"
     case "REJECTED": return "ไม่ผ่าน"
     default: return status
+
   }
+
 }
 
 const statusColor = (status: string) => {
+
   switch (status) {
+
     case "PENDING": return "bg-gray-100 text-gray-800"
     case "VERIFYING": return "bg-blue-100 text-blue-800"
     case "VERIFIED": return "bg-yellow-100 text-yellow-800"
     case "CONFIRMED": return "bg-green-100 text-green-800"
     case "REJECTED": return "bg-red-100 text-red-800"
     default: return ""
+
   }
+
 }
 
 onMounted(fetchPayments)
+
 </script>
 
 <style scoped>
