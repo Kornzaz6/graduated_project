@@ -31,14 +31,12 @@ export const createReview = async (req: Request, res: Response) => {
 
     /* check รีวิวซ้ำ */
 
-    const existingReview = await prisma.review.findUnique({
-      where: {
-        userId_dormitoryId: {
-          userId,
-          dormitoryId
-        }
-      }
-    })
+    const existingReview = await prisma.review.findFirst({
+  where: {
+    userId,
+    dormitoryId
+  }
+})
 
     if (existingReview) {
       return res.status(400).json({
