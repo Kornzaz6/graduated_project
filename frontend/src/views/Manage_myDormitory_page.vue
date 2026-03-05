@@ -14,13 +14,13 @@
       <div
         v-for="dorm in dormitories"
         :key="dorm.id"
-        class="p-4 bg-white rounded-lg shadow"
+        class="p-4 transition bg-white shadow rounded-xl hover:shadow-lg"
       >
         <!-- Image -->
         <img
-          v-if="dorm.images.length"
-          :src="`http://localhost:5000${dorm.images[0].imageUrl}`"
-          class="object-cover w-full h-40 mb-3 rounded"
+          v-if="dorm.images?.length"
+          :src="`${BASE_URL}${dorm.images[0].imageUrl}`"
+          class="object-cover w-full h-40 mb-3 rounded-lg"
         />
 
         <h2 class="text-lg font-semibold">
@@ -37,22 +37,24 @@
 
         <!-- Stats -->
         <div class="mt-4 space-y-1 text-sm text-gray-600">
-          <p>Total Rooms: {{ dorm.rooms.length }}</p>
+          <p>Total Rooms: {{ dorm.rooms?.length || 0 }}</p>
+
           <p>
             Available Rooms:
             {{
-              dorm.rooms.filter((r: any) => r.status === "AVAILABLE")
+              dorm.rooms?.filter((r:any) => r.status === "AVAILABLE").length || 0
             }}
           </p>
         </div>
 
         <!-- Actions -->
         <div class="flex gap-2 mt-4">
-            <router-link
-              :to="`/owner/edit-dormitory/${dorm.id}`"
-              class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600">
-                Edit
-            </router-link>  
+          <router-link
+            :to="`/owner/edit-dormitory/${dorm.id}`"
+            class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+          >
+            Edit
+          </router-link>
 
           <button
             @click="deleteDormitory(dorm.id)"
@@ -70,6 +72,8 @@
 import { onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 import api from "@/services/api"
+
+const BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 const router = useRouter()
 
