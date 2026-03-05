@@ -481,3 +481,60 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Update failed" })
   }
 }
+
+export const getOwnerTenants = async (req: Request, res: Response) => {
+  try {
+
+    const ownerId = (req as any).user.id
+
+    const tenants = await prisma.leaseContract.findMany({
+
+      where: {
+        status: "ACTIVE",
+        room: {
+          dormitory: {
+            ownerId
+          }
+        }
+      },
+
+      include: {
+
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+
+        room: {
+          select: {
+            roomNumber: true,
+            dormitory: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+
+      }
+
+    })
+
+    res.json(tenants)
+
+  } catch (error) {
+
+    console.error("FETCH TENANTS ERROR:", error)
+
+    res.status(500).json({
+      message: "Failed to fetch tenants"
+    })
+
+  }
+}

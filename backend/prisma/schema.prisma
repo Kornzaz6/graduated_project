@@ -300,7 +300,7 @@ model Review {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
 
-  @@index([dormitoryId])
+  @@index([userId, dormitoryId])
 }
 
 model OwnerApplication {

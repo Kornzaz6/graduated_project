@@ -7,10 +7,12 @@ import {
   removeOwner,
   getAllOwners,
   getOwnerProfile,
-  updateOwnerProfile
+  updateOwnerProfile,
+  getOwnerTenants
 } from "../controllers/owner.controller"
 
 import { uploadOwnerDocs } from "../middleware/ownerUpload"
+import { authMiddleware } from "../middleware/auth"
 
 const router = Router()
 
@@ -30,6 +32,12 @@ router.post(
 
 // Admin ดูรายการใบสมัครทั้งหมด
 router.get("/applications", getOwnerApplications)
+
+router.get(
+  "/tenants",
+  authMiddleware,
+  getOwnerTenants
+)
 
 // Admin อนุมัติใบสมัคร
 router.patch("/applications/:id/approve", approveOwner)

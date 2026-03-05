@@ -127,8 +127,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue"
 import L from "leaflet"
-import api from "@/services/api"
+import  api  from "@/services/api"
 
+const backendURL = "http://localhost:5000"
 const currentUser = JSON.parse(localStorage.getItem("user") || "{}")
 
 if (!currentUser || currentUser.role !== "OWNER") {
@@ -206,6 +207,7 @@ const reverseGeocode = async (lat: number, lng: number) => {
       .filter(Boolean)
       .join(", ")
 
+    // ถ้า formattedAddress ว่าง → fallback เป็น display_name
     form.address = formattedAddress || data.display_name || ""
 
   } catch (error) {
@@ -227,20 +229,23 @@ const submitDormitory = async () => {
     const formData = new FormData()
 
     Object.entries(form).forEach(([key, value]) => {
-      if (value !== null) {
-        formData.append(key, String(value))
-      }
+      formData.append(key, String(value))
     })
+
+    formData.append("userId", currentUser.id)
 
     files.value.forEach(file => {
       formData.append("images", file)
     })
 
-    await api.post("/dormitories", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data"
-      }
+    const response = await fetch(`${backendURL}/api/dormitories`, {
+      method: "POST",
+      body: formData
     })
+
+    const data = await response.json()
+
+    if (!response.ok) throw new Error(data.message)
 
     successMessage.value =
       "Dormitory submitted successfully. Waiting for admin approval."
@@ -248,7 +253,7 @@ const submitDormitory = async () => {
     resetForm()
 
   } catch (error: any) {
-    alert(error.response?.data?.message || "Submission failed")
+    alert(error.message)
   } finally {
     isSubmitting.value = false
   }

@@ -83,7 +83,15 @@
             >
               📄 Lease Contracts
             </router-link>
-
+            
+            <router-link
+              v-if="isOwner"
+              :to="{ name: 'OwnerTenants' }"
+              class="dropdown-item"
+              @click="closeMenu"
+            >
+              � Tenants
+            </router-link>
             <div class="my-2 border-t"></div>
 
             <button

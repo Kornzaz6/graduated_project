@@ -27,6 +27,7 @@ import ManageRentalRequest_page from "@/views/ManageRentalRequest_page.vue"
 import OwnerPaymentDashboard_page from "@/views/OwnerPaymentDashboard_page.vue"
 import OwnerComfirmPayment_page from "@/views/OwnerComfirmPayment_page.vue"
 import OwnerProfile_page from "@/views/OwnerProfile_page.vue"
+import OwnerTenants_page from "@/views/OwnerTenants_page.vue"
 
 // Member
 import MembercontractForm_page from "@/views/MembercontractForm_page.vue"
@@ -82,6 +83,7 @@ const routes = [
       { path: "manage-dormitory", name: "ManageDormitory", component: Manage_myDormitory_page },
       { path: "edit-dormitory/:id", name: "EditDormitory", component: OwnerMange_rooms_page },
       { path: "rental-requests", name: "RentalRequests", component: ManageRentalRequest_page },
+      { path: "tenants", name: "OwnerTenants", component: OwnerTenants_page },
       { path: "lease-contracts", name: "LeaseContracts", component: ManageLeaseContract_page },
       { path: "payments", name: "OwnerPayments", component: OwnerPaymentDashboard_page },
       { path: "confirm-payment/:paymentId", name: "ConfirmPayment", component: OwnerComfirmPayment_page },

@@ -145,3 +145,47 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Server error" })
   }
 }
+
+/* ================= CURRENT USER ================= */
+
+export const getCurrentUser = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        owner: true,
+      },
+    })
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      })
+    }
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        owner: user.owner,
+      },
+    })
+  } catch (error) {
+    console.error("GET CURRENT USER ERROR:", error)
+    return res.status(500).json({
+      message: "Server error",
+    })
+  }
+}
