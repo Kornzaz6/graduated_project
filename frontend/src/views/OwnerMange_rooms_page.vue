@@ -73,7 +73,6 @@
     </div>
 
     <!-- ROOM GRID -->
-    <!-- ROOM GRID -->
 <div class="p-8 bg-gradient-to-b from-black to-gray-900 rounded-3xl">
 
   <div class="flex items-center justify-between mb-8 text-white">
@@ -106,7 +105,7 @@
   <div
     v-for="(group, floor) in groupedRooms"
     :key="floor"
-    class="flex items-center mb-10"
+    class="flex items-start mb-10"
   >
 
     <div class="grid flex-1 grid-cols-8 gap-8">
@@ -114,10 +113,10 @@
       <div
         v-for="room in group"
         :key="room.id"
-        class="relative flex flex-col items-center transition cursor-pointer hover:scale-110"
+        class="relative flex flex-col items-center"
       >
 
-        <!-- CUSTOM CHECKBOX -->
+        <!-- CHECKBOX -->
         <label
           class="absolute z-20 flex items-center justify-center w-5 h-5 bg-white border rounded shadow cursor-pointer top-1 left-1"
         >
@@ -142,7 +141,7 @@
         <!-- ROOM CARD -->
         <div
           @click="openEdit(room)"
-          class="flex items-center justify-center w-20 h-20 overflow-hidden text-xl transition-all duration-200 rounded-xl"
+          class="flex items-center justify-center w-20 h-20 overflow-hidden text-xl transition-all duration-200 rounded-xl hover:scale-110"
           :class="[
 
             room.status === 'AVAILABLE'
@@ -158,21 +157,75 @@
           ]"
         >
 
-          <!-- ROOM IMAGE -->
           <img
-            v-if="room.imageUrl"
-            :src="room.imageUrl"
-            class="object-cover w-full h-full"
-          />
+  v-if="room.images?.length"
+  :src="room.images[0].imageUrl"
+  class="object-cover w-full h-full"
+/>
 
-          <!-- DEFAULT ICON -->
           <span v-else>🏠</span>
 
         </div>
 
+
         <!-- ROOM NUMBER -->
         <div class="mt-2 text-xs text-white">
           {{ room.roomNumber }}
+        </div>
+
+
+        <!-- DRAG & DROP UPLOAD -->
+        <div
+          class="w-24 p-2 mt-2 text-center border-2 border-dashed rounded cursor-pointer border-white/30 hover:bg-white/10"
+          @dragover.prevent
+          @drop.prevent="handleDrop(room.id, $event)"
+        >
+
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            class="hidden"
+            :ref="el => fileInputs[room.id] = el"
+            @change="handleMultiUpload(room.id, $event)"
+          />
+
+          <button
+            class="w-full text-xs text-white"
+            @click="openFilePicker(room.id)"
+          >
+            Upload
+          </button>
+
+        </div>
+
+
+        <!-- IMAGE GALLERY -->
+        <div
+          v-if="room.images?.length"
+          class="grid grid-cols-3 gap-1 mt-2"
+        >
+
+          <div
+            v-for="img in room.images"
+            :key="img.id"
+            class="relative"
+          >
+
+            <img
+              :src="img.imageUrl"
+              class="object-cover w-8 h-8 rounded"
+            />
+
+            <button
+              class="absolute px-1 text-xs text-white bg-red-500 rounded -top-1 -right-1"
+              @click.stop="deleteRoomImage(img.id)"
+            >
+              x
+            </button>
+
+          </div>
+
         </div>
 
       </div>
@@ -258,15 +311,21 @@ import api from '@/services/api'
 
 /* ================= TYPES ================= */
 
+interface RoomImage {
+  id:number
+  imageUrl:string
+}
+
 interface Room {
-  id: number
-  roomNumber: string
-  price: number
-  size: number
-  floor: number
-  capacity: number
-  status: string
-  imageUrl?: string
+  id:number
+  roomNumber:string
+  price:number
+  size:number
+  floor:number
+  capacity:number
+  status:string
+
+  images?:RoomImage[]
 }
 
 /* ================= ROUTE ================= */
@@ -284,6 +343,85 @@ const editImage = ref<File | null>(null)
 
 const selectedRooms = ref<number[]>([])
 const bulkFloor = ref<number | null>(null)
+
+const fileInputs = ref<Record<number, any>>({})
+
+// file picker
+const openFilePicker = (roomId:number)=>{
+
+  fileInputs.value[roomId]?.click()
+
+}
+
+//multi upload
+const handleMultiUpload = async (roomId:number,e:Event)=>{
+
+  const target = e.target as HTMLInputElement
+
+  if(!target.files?.length) return
+
+  const files = Array.from(target.files)
+
+  for(const file of files){
+
+    const formData = new FormData()
+
+    formData.append("image",file)
+
+    await api.post(
+      `/dormitories/rooms/${roomId}/images`,
+      formData,
+      {
+        headers:{
+          "Content-Type":"multipart/form-data"
+        }
+      }
+    )
+
+  }
+
+  fetchRooms()
+
+}
+
+//drag and drop
+const handleDrop = async (roomId:number,e:DragEvent)=>{
+
+  const files = Array.from(e.dataTransfer?.files || [])
+
+  if(!files.length) return
+
+  for(const file of files){
+
+    const formData = new FormData()
+
+    formData.append("image",file)
+
+    await api.post(
+      `/dormitories/rooms/${roomId}/images`,
+      formData,
+      {
+        headers:{
+          "Content-Type":"multipart/form-data"
+        }
+      }
+    )
+
+  }
+
+  fetchRooms()
+
+}
+
+//delete image
+const deleteRoomImage = async (imageId:number)=>{
+
+  await api.delete(`/dormitories/rooms/images/${imageId}`)
+
+  fetchRooms()
+
+}
+
 
 /* ================= PREVIEW ================= */
 
