@@ -200,6 +200,8 @@ model Room {
   capacity    Int
   dormitoryId Int
 
+  imageUrl    String?
+
   dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
 
   rentalRequests RentalRequest[]
