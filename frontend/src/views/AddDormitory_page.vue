@@ -197,17 +197,15 @@
         >
 
           <div
-            v-for="(file, index) in files"
-            :key="index"
-            class="overflow-hidden border rounded-lg"
-          >
-
-            <img
-              :src="URL.createObjectURL(file)"
-              class="object-cover w-full h-24"
-            />
-
-          </div>
+  v-for="(file, index) in files"
+  :key="index"
+  class="overflow-hidden border rounded-lg"
+>
+  <img
+  :src="previewImage(file)"
+  class="object-cover w-full h-24"
+/>
+</div>
 
         </div>
 
@@ -237,6 +235,10 @@
 import { onMounted, reactive, ref } from "vue"
 import L from "leaflet"
 import api from "@/services/api"
+
+const previewImage = (file: File) => {
+  return URL.createObjectURL(file)
+}
 
 /* ================= USER ================= */
 
