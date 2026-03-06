@@ -41,29 +41,31 @@
       <div class="overflow-hidden bg-white shadow-xl rounded-2xl">
 
         <div
-          v-if="dormitory.images?.length"
-          class="relative h-[420px]"
-        >
-          <img
-            :src="`${BASE_URL}${dormitory.images[currentImage].imageUrl}`"
-            class="object-cover w-full h-full"
-          />
+  v-if="dormitory.images && dormitory.images.length"
+  class="relative h-[420px]"
+>
+  <img
+    :src="BASE_URL + dormitory.images[currentImage]?.imageUrl"
+    class="object-cover w-full h-full"
+  />
 
-          <button
-            @click="prevImage"
-            class="absolute p-3 bg-white rounded-full left-4 top-1/2"
-          >
-            ‹
-          </button>
+  <button
+    v-if="dormitory.images.length > 1"
+    @click="prevImage"
+    class="absolute p-3 bg-white rounded-full left-4 top-1/2"
+  >
+    ‹
+  </button>
 
-          <button
-            @click="nextImage"
-            class="absolute p-3 bg-white rounded-full right-4 top-1/2"
-          >
-            ›
-          </button>
+  <button
+    v-if="dormitory.images.length > 1"
+    @click="nextImage"
+    class="absolute p-3 bg-white rounded-full right-4 top-1/2"
+  >
+    ›
+  </button>
 
-        </div>
+</div>
 
         <div
           v-else
@@ -160,7 +162,7 @@
             v-model="comment"
             placeholder="เขียนความคิดเห็น..."
             class="w-full p-3 border rounded-xl"
-          />
+          ></textarea>
 
           <button
             @click="submitReview"
