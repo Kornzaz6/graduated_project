@@ -1,4 +1,5 @@
 import { Router } from "express";
+
 import {
   createDormitory,
   createRoom,
@@ -11,10 +12,16 @@ import {
   getDormitoryById,
   approveDormitory,
   rejectDormitory,
-  getPendingDormitories
+  getPendingDormitories,
 } from "../controllers/dormitory.controller";
 
+import {
+  uploadRoomImage,
+  deleteRoomImage
+} from "../controllers/roomImage.controller";
+
 import { uploadDormitoryImages } from "../middleware/dormitory";
+import { uploadSlipMiddleware } from "../middleware/upload"; // ใช้ multer upload
 import { authMiddleware } from "../middleware/auth";
 
 const router = Router();
@@ -26,7 +33,7 @@ const router = Router();
 // List all dormitories
 router.get("/", getDormitories);
 
-// 🔥 IMPORTANT: static routes must come before dynamic routes
+// 🔥 static route before dynamic
 router.get("/pending", authMiddleware, getPendingDormitories);
 
 // Create dormitory
@@ -43,7 +50,7 @@ router.post(
 // Get dormitories by ownerId
 router.get("/owners/:ownerId", getOwnerDormitories);
 
-// Get dormitories by userId (owner profile)
+// Get dormitories by userId
 router.get("/owner/:userId", getMyDormitories);
 
 /* =========================
@@ -63,6 +70,23 @@ router.patch("/rooms/:id", updateRoom);
 router.delete("/rooms/:id", deleteRoom);
 
 /* =========================
+   ROOM IMAGES
+========================= */
+
+// Upload room image
+router.post(
+  "/rooms/:id/images",
+  uploadSlipMiddleware.single("image"),
+  uploadRoomImage
+);
+
+// Delete room image
+router.delete(
+  "/rooms/images/:imageId",
+  deleteRoomImage
+);
+
+/* =========================
    ADMIN ACTIONS
 ========================= */
 
@@ -76,7 +100,7 @@ router.patch("/:id/reject", authMiddleware, rejectDormitory);
    SINGLE DORM (MUST BE LAST)
 ========================= */
 
-// ⚠️ Dynamic route must be LAST
+// ⚠️ dynamic route must be LAST
 router.get("/:id", getDormitoryById);
 
 export default router;

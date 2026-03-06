@@ -200,15 +200,23 @@ model Room {
   capacity    Int
   dormitoryId Int
 
-  imageUrl    String?
-
   dormitory Dormitory @relation(fields: [dormitoryId], references: [id], onDelete: Cascade)
+
+  images RoomImage[]   // room gallery
 
   rentalRequests RentalRequest[]
   leaseContracts LeaseContract[]
 
   @@unique([dormitoryId, roomNumber])
   @@index([status])
+}
+
+model RoomImage {
+  id       Int    @id @default(autoincrement())
+  imageUrl String
+
+  roomId Int
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
 model RentalRequest {
