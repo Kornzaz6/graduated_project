@@ -159,7 +159,7 @@
 
           <img
   v-if="room.images?.length"
-  :src="room.images[0].imageUrl"
+  :src="room.images?.[0]?.imageUrl"
   class="object-cover w-full h-full"
 />
 
@@ -280,10 +280,10 @@
             <input type="file" accept="image/*" @change="handleEditFile" />
 
             <img
-              v-if="editingRoom.imageUrl"
-              :src="editingRoom.imageUrl"
-              class="object-cover w-32 h-32 mt-2 rounded"
-            />
+  v-if="editingRoom.images?.length"
+  :src="editingRoom.images?.[0]?.imageUrl"
+  class="object-cover w-32 h-32 mt-2 rounded"
+/>
           </div>
         </div>
 
