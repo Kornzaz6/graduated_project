@@ -6,108 +6,63 @@
     <div class="p-6 mb-8 bg-white shadow rounded-2xl">
       <h2 class="mb-4 text-lg font-semibold">Add New Room</h2>
 
-      <div class="grid gap-4 md:grid-cols-6">
+      <div class="grid gap-4 md:grid-cols-7">
+
         <input v-model="form.roomNumber" placeholder="Room Number" class="input" />
+
         <input v-model="form.price" type="number" placeholder="Price" class="input" />
+
         <input v-model="form.size" type="number" placeholder="Size" class="input" />
+
         <input v-model="form.floor" type="number" placeholder="Floor" class="input" />
+
         <input v-model="form.capacity" type="number" placeholder="Capacity" class="input" />
 
-        <button @click="createRoom" class="btn-primary">Add</button>
-      </div>
-    </div>
+        <!-- Upload -->
+        <input
+          type="file"
+          accept="image/*"
+          @change="handleFile"
+          class="input"
+        />
 
-    <!-- BULK ACTION BAR -->
-    <div
-      v-if="selectedRooms.length > 0"
-      class="flex items-center justify-between p-4 mb-6 text-white bg-blue-600 rounded-2xl"
-    >
-      <div>Selected {{ selectedRooms.length }} rooms</div>
-
-      <div class="flex gap-3">
-        <button
-          @click="bulkChangeStatus('AVAILABLE')"
-          class="px-4 py-2 bg-green-500 rounded hover:bg-green-600"
-        >
-          Set Available
-        </button>
-
-        <button
-          @click="bulkChangeStatus('OCCUPIED')"
-          class="px-4 py-2 bg-red-500 rounded hover:bg-red-600"
-        >
-          Set Occupied
-        </button>
-
-        <!-- Set Floor -->
-        <div class="flex items-center gap-2">
-          <input
-            v-model="bulkFloor"
-            type="number"
-            placeholder="Floor"
-            class="w-20 px-2 py-1 text-black rounded"
-          />
-
-          <button @click="bulkSetFloor" class="px-4 py-2 bg-purple-500 rounded hover:bg-purple-600">
-            Set Floor
-          </button>
-        </div>
-
-        <button @click="clearSelection" class="px-4 py-2 bg-gray-800 rounded hover:bg-gray-900">
-          Clear
+        <button @click="createRoom" class="btn-primary">
+          Add
         </button>
       </div>
+
+      <!-- Preview -->
+      <div v-if="roomImage" class="mt-4">
+        <img
+  v-if="previewUrl"
+  :src="previewUrl"
+  class="object-cover w-32 h-32 rounded"
+/>
+      </div>
+
     </div>
 
     <!-- ROOM GRID -->
     <div class="p-8 bg-gradient-to-b from-black to-gray-900 rounded-3xl">
-      <!-- Legend + Select All -->
-      <div class="flex items-center justify-between mb-8 text-white">
-        <div class="flex items-center gap-6">
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-green-500 rounded"></div>
-            <span class="text-sm">Available</span>
-          </div>
 
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 bg-red-500 rounded"></div>
-            <span class="text-sm">Occupied</span>
-          </div>
-        </div>
+      <div
+        v-for="(group, floor) in groupedRooms"
+        :key="floor"
+        class="flex items-center mb-10"
+      >
 
-        <button @click="selectAll" class="px-3 py-1 text-sm rounded bg-white/20 hover:bg-white/30">
-          Select All
-        </button>
-      </div>
-
-      <!-- Floors -->
-      <div v-for="(group, floor) in groupedRooms" :key="floor" class="flex items-center mb-10">
-        <!-- Rooms -->
         <div class="grid flex-1 grid-cols-8 gap-8">
+
           <div
             v-for="room in group"
             :key="room.id"
-            class="relative flex flex-col items-center transition cursor-pointer hover:scale-110"
+            class="relative flex flex-col items-center cursor-pointer"
           >
-            <!-- Checkbox -->
-            <input
-              type="checkbox"
-              class="absolute w-4 h-4 top-1 left-1"
-              :checked="selectedRooms.includes(room.id)"
-              @change="toggleSelect(room.id)"
-            />
 
-            <!-- Room Card -->
+            <!-- ROOM CARD -->
             <div
               @click="openEdit(room)"
-              class="flex items-center justify-center text-xl transition-all w-14 h-14 rounded-xl"
-              :class="[
-                room.status === 'AVAILABLE'
-                  ? 'bg-green-500 shadow-green-500/40'
-                  : 'bg-red-500 shadow-red-500/40',
-                selectedRooms.includes(room.id) ? 'ring-4 ring-yellow-400' : '',
-                'shadow-lg',
-              ]"
+              class="flex items-center justify-center text-xl text-white bg-blue-500 shadow-lg w-14 h-14 rounded-xl"
             >
               🏠
             </div>
@@ -115,95 +70,88 @@
             <div class="mt-2 text-xs text-white">
               {{ room.roomNumber }}
             </div>
+
+            <!-- IMAGE -->
+            <img
+              v-if="room.imageUrl"
+              :src="room.imageUrl"
+              class="object-cover w-12 h-12 mt-1 rounded"
+            />
+
           </div>
+
         </div>
 
-        <!-- Floor Label -->
         <div class="w-12 text-2xl font-bold text-center text-white">
           {{ getFloorLabel(Number(floor)) }}
         </div>
+
       </div>
+
     </div>
 
     <!-- EDIT MODAL -->
-    <!-- EDIT MODAL -->
-    <div v-if="editingRoom" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div v-if="editingRoom" class="fixed inset-0 flex items-center justify-center bg-black/60">
+
       <div class="w-full max-w-md p-8 bg-white shadow-xl rounded-2xl">
-        <h2 class="mb-6 text-xl font-bold text-gray-800">Edit Room {{ editingRoom.roomNumber }}</h2>
 
-        <div class="space-y-5">
-          <!-- Room Number -->
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-600"> Room Number </label>
-            <input v-model="editForm.roomNumber" placeholder="เช่น 101, A12" class="input" />
-          </div>
+        <h2 class="mb-6 text-xl font-bold">
+          Edit Room {{ editingRoom.roomNumber }}
+        </h2>
 
-          <!-- Price -->
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-600">
-              Monthly Price (บาท)
-            </label>
-            <input v-model="editForm.price" type="number" placeholder="เช่น 3500" class="input" />
-          </div>
+        <div class="space-y-4">
 
-          <!-- Size -->
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-600"> Room Size (sqm) </label>
-            <input v-model="editForm.size" type="number" placeholder="เช่น 28" class="input" />
-          </div>
+          <input v-model="editForm.roomNumber" class="input" />
 
-          <!-- Floor -->
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-600"> Floor </label>
-            <input
-              v-model="editForm.floor"
-              type="number"
-              placeholder="เช่น 1, 2, 3"
-              class="input"
-            />
-          </div>
+          <input v-model="editForm.price" type="number" class="input" />
 
-          <!-- Capacity -->
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-600"> Capacity (คน) </label>
-            <input
-              v-model="editForm.capacity"
-              type="number"
-              placeholder="จำนวนผู้เข้าพัก"
-              class="input"
-            />
-          </div>
+          <input v-model="editForm.size" type="number" class="input" />
+
+          <input v-model="editForm.floor" type="number" class="input" />
+
+          <input v-model="editForm.capacity" type="number" class="input" />
+
+          <input
+            type="file"
+            accept="image/*"
+            @change="handleEditFile"
+            class="input"
+          />
+
         </div>
 
-        <!-- ACTIONS -->
-        <div class="flex justify-end gap-3 mt-8">
+        <div class="flex justify-end gap-3 mt-6">
+
           <button
             @click="editingRoom = null"
-            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+            class="px-4 py-2 bg-gray-200 rounded"
           >
             Cancel
           </button>
 
           <button
             @click="saveEdit"
-            class="px-5 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            class="px-4 py-2 text-white bg-blue-600 rounded"
           >
-            Save Changes
+            Save
           </button>
+
         </div>
+
       </div>
+
     </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, reactive, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import api from '@/services/api'
+import { onMounted, ref, reactive, computed } from "vue"
+import { useRoute } from "vue-router"
+import api from "@/services/api"
 
-/* =====================================================
-   TYPES
-===================================================== */
+/* ================= TYPES ================= */
+
 interface Room {
   id: number
   roomNumber: string
@@ -212,95 +160,109 @@ interface Room {
   floor: number
   capacity: number
   status: string
+  imageUrl?: string
 }
 
-/* =====================================================
-   ROUTER
-===================================================== */
+/* ================= ROUTE ================= */
+
 const route = useRoute()
-const router = useRouter()
 const dormId = Number(route.params.id)
 
-/* =====================================================
-   STATE
-===================================================== */
+/* ================= STATE ================= */
+
 const rooms = ref<Room[]>([])
-const loading = ref(false)
-const bulkFloor = ref<number | null>(null)
-const selectedRooms = ref<number[]>([])
 const editingRoom = ref<Room | null>(null)
 
-/* =====================================================
-   SELECTION
-===================================================== */
-const isSelected = (id: number) =>
-  selectedRooms.value.includes(id)
+const roomImage = ref<File | null>(null)
+const editImage = ref<File | null>(null)
 
-const toggleSelect = (id: number) => {
-  if (isSelected(id)) {
-    selectedRooms.value = selectedRooms.value.filter(r => r !== id)
-  } else {
-    selectedRooms.value.push(id)
+/* ================= PREVIEW ================= */
+
+const previewUrl = computed(() => {
+  if (!roomImage.value) return null
+  return URL.createObjectURL(roomImage.value)
+})
+
+/* ================= FORM ================= */
+
+const form = reactive({
+  roomNumber: "",
+  price: "",
+  size: "",
+  floor: "",
+  capacity: ""
+})
+
+const editForm = reactive({
+  roomNumber: "",
+  price: "",
+  size: "",
+  floor: "",
+  capacity: ""
+})
+
+/* ================= FILE HANDLERS ================= */
+
+const handleFile = (e: Event) => {
+  const target = e.target as HTMLInputElement
+
+  if (target.files && target.files.length > 0) {
+    roomImage.value = target.files[0] as File
   }
 }
 
-const selectAll = () => {
-  selectedRooms.value = rooms.value.map(r => r.id)
+const handleEditFile = (e: Event) => {
+  const target = e.target as HTMLInputElement
+
+  if (target.files && target.files.length > 0) {
+    editImage.value = target.files[0] as File
+  }
 }
 
-const clearSelection = () => {
-  selectedRooms.value = []
+/* ================= FETCH ================= */
+
+const fetchRooms = async () => {
+  const { data } = await api.get(`/dormitories/rooms/${dormId}`)
+  rooms.value = data
 }
 
-/* =====================================================
-   GROUP ROOMS BY FLOOR
-===================================================== */
-const groupedRooms = computed(() => {
-  const groups: Record<number, Room[]> = {}
+/* ================= CREATE ROOM ================= */
 
-  const sorted = [...rooms.value].sort((a, b) => {
-    if (a.floor !== b.floor) return a.floor - b.floor
-    return a.roomNumber.localeCompare(b.roomNumber)
+const createRoom = async () => {
+
+  const formData = new FormData()
+
+  formData.append("roomNumber", form.roomNumber)
+  formData.append("price", form.price)
+  formData.append("size", form.size)
+  formData.append("floor", form.floor)
+  formData.append("capacity", form.capacity)
+  formData.append("dormitoryId", String(dormId))
+
+  if (roomImage.value) {
+    formData.append("image", roomImage.value)
+  }
+
+  await api.post("/dormitories/rooms", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
   })
 
-  for (const room of sorted) {
-    if (!groups[room.floor]) {
-      groups[room.floor] = []
-    }
-    groups[room.floor]!.push(room)
-  }
+  form.roomNumber = ""
+  form.price = ""
+  form.size = ""
+  form.floor = ""
+  form.capacity = ""
+  roomImage.value = null
 
-  return groups
-})
-
-const getFloorLabel = (floor: number) => {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  return letters[floor - 1] || floor
+  fetchRooms()
 }
 
-/* =====================================================
-   ADD FORM
-===================================================== */
-const form = reactive({
-  roomNumber: '',
-  price: '',
-  size: '',
-  floor: '',
-  capacity: '',
-})
-
-/* =====================================================
-   EDIT FORM
-===================================================== */
-const editForm = reactive({
-  roomNumber: '',
-  price: '',
-  size: '',
-  floor: '',
-  capacity: '',
-})
+/* ================= EDIT ================= */
 
 const openEdit = (room: Room) => {
+
   editingRoom.value = room
 
   editForm.roomNumber = room.roomNumber
@@ -311,115 +273,78 @@ const openEdit = (room: Room) => {
 }
 
 const saveEdit = async () => {
+
   if (!editingRoom.value) return
 
-  await updateRoom(editingRoom.value.id, {
-    roomNumber: editForm.roomNumber,
-    price: Number(editForm.price),
-    size: Number(editForm.size),
-    floor: Number(editForm.floor),
-    capacity: Number(editForm.capacity),
-  })
+  const formData = new FormData()
+
+  formData.append("roomNumber", editForm.roomNumber)
+  formData.append("price", editForm.price)
+  formData.append("size", editForm.size)
+  formData.append("floor", editForm.floor)
+  formData.append("capacity", editForm.capacity)
+
+  if (editImage.value) {
+    formData.append("image", editImage.value)
+  }
+
+  await api.patch(
+    `/dormitories/rooms/${editingRoom.value.id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    }
+  )
 
   editingRoom.value = null
+  editImage.value = null
+
+  fetchRooms()
 }
 
-/* =====================================================
-   API CALLS (AXIOS)
-===================================================== */
-const fetchRooms = async () => {
-  try {
-    loading.value = true
-    const { data } = await api.get(`/dormitories/rooms/${dormId}`)
-    rooms.value = data
-  } catch (err) {
-    console.error('Fetch rooms error:', err)
-  } finally {
-    loading.value = false
-  }
-}
+/* ================= GROUP ROOMS ================= */
 
-const createRoom = async () => {
-  await api.post('/dormitories/rooms', {
-    roomNumber: form.roomNumber,
-    price: Number(form.price),
-    size: Number(form.size),
-    floor: Number(form.floor),
-    capacity: Number(form.capacity),
-    dormitoryId: dormId,
+const groupedRooms = computed(() => {
+
+  const groups: Record<number, Room[]> = {}
+
+  rooms.value.forEach(room => {
+
+    if (!groups[room.floor]) {
+      groups[room.floor] = []
+    }
+
+    groups[room.floor]!.push(room)
+
   })
 
-  form.roomNumber = ''
-  form.price = ''
-  form.size = ''
-  form.floor = ''
-  form.capacity = ''
+  return groups
+})
 
-  await fetchRooms()
+/* ================= FLOOR LABEL ================= */
+
+const getFloorLabel = (floor: number) => {
+
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+  return letters[floor - 1] || floor
 }
 
-const updateRoom = async (id: number, payload: Partial<Room>) => {
-  await api.patch(`/dormitories/rooms/${id}`, payload)
-  await fetchRooms()
-}
+/* ================= MOUNT ================= */
 
-const deleteRoom = async (id: number) => {
-  if (!confirm('Delete this room?')) return
-  await api.delete(`/dormitories/rooms/${id}`)
-  await fetchRooms()
-}
-
-/* =====================================================
-   BULK ACTIONS
-===================================================== */
-const bulkChangeStatus = async (status: string) => {
-  if (!selectedRooms.value.length) return
-
-  await Promise.all(
-    selectedRooms.value.map(id =>
-      api.patch(`/dormitories/rooms/${id}`, { status })
-    )
-  )
-
-  clearSelection()
-  await fetchRooms()
-}
-
-const bulkSetFloor = async () => {
-  if (!bulkFloor.value || !selectedRooms.value.length) return
-
-  await Promise.all(
-    selectedRooms.value.map(id =>
-      api.patch(`/dormitories/rooms/${id}`, {
-        floor: bulkFloor.value,
-      })
-    )
-  )
-
-  bulkFloor.value = null
-  clearSelection()
-  await fetchRooms()
-}
-
-/* =====================================================
-   MOUNT
-===================================================== */
 onMounted(() => {
-  if (!dormId || isNaN(dormId)) {
-    router.push('/owner/manage-dormitory')
-    return
-  }
-
   fetchRooms()
 })
 </script>
 
 <style scoped>
-.input {
+.input{
   @apply border rounded px-3 py-2 w-full;
 }
 
-.btn-primary {
+.btn-primary{
   @apply bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700;
 }
 </style>
