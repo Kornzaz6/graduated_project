@@ -1,12 +1,14 @@
 <template>
-  <div class="min-h-screen p-10 bg-gray-100">
-    <div class="max-w-4xl p-10 mx-auto bg-white shadow-2xl rounded-3xl">
+  <div class="min-h-screen p-6 bg-gray-100 md:p-10">
+
+    <div class="max-w-4xl p-6 mx-auto bg-white shadow-2xl md:p-10 rounded-3xl">
 
       <!-- HEADER -->
       <div class="mb-10">
         <h2 class="text-3xl font-bold text-gray-800">
           Create New Dormitory
         </h2>
+
         <p class="mt-2 text-gray-500">
           Submit your dormitory for admin approval. Once approved,
           it will be visible to members.
@@ -23,27 +25,53 @@
 
       <!-- ================= BASIC INFO ================= -->
       <section class="mb-10">
-        <h3 class="section-title">Basic Information</h3>
 
-        <div class="grid grid-cols-2 gap-6">
+        <h3 class="section-title">
+          Basic Information
+        </h3>
 
-          <div class="col-span-2">
+        <div class="grid gap-6 md:grid-cols-2">
+
+          <!-- Dormitory Name -->
+          <div class="md:col-span-2">
             <label class="label">Dormitory Name *</label>
-            <input v-model="form.name" class="input" />
+
+            <input
+              v-model="form.name"
+              placeholder="Example Dormitory"
+              class="input"
+            />
           </div>
 
+          <!-- Dormitory Type -->
           <div>
             <label class="label">Dormitory Type *</label>
+
             <select v-model="form.type" class="input">
-              <option value="">Select Type</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Mixed</option>
+
+              <option value="">
+                Select Type
+              </option>
+
+              <option value="Male">
+                Male
+              </option>
+
+              <option value="Female">
+                Female
+              </option>
+
+              <option value="Mixed">
+                Mixed
+              </option>
+
             </select>
           </div>
 
+          <!-- Room Count -->
           <div>
             <label class="label">Number of Rooms *</label>
+
             <input
               type="number"
               min="1"
@@ -53,59 +81,136 @@
           </div>
 
         </div>
+
       </section>
 
       <!-- ================= LOCATION ================= -->
       <section class="mb-10">
-        <h3 class="section-title">Location</h3>
+
+        <h3 class="section-title">
+          Location
+        </h3>
 
         <div class="space-y-6">
 
+          <!-- Address -->
           <div>
-            <label class="label">Address *</label>
-            <input v-model="form.address" class="input" />
+            <label class="label">
+              Address *
+            </label>
+
+            <input
+              v-model="form.address"
+              placeholder="Dormitory Address"
+              class="input"
+            />
           </div>
 
+          <!-- Auto location -->
           <div>
-            <label class="label">Auto-detected Location</label>
-            <input v-model="form.location" class="input bg-gray-50" disabled />
+            <label class="label">
+              Auto-detected Location
+            </label>
+
+            <input
+              v-model="form.location"
+              disabled
+              class="input bg-gray-50"
+            />
           </div>
 
-          <div class="grid grid-cols-2 gap-6">
+          <!-- Lat Lng -->
+          <div class="grid gap-6 md:grid-cols-2">
+
             <div>
-              <label class="label">Latitude</label>
-              <input type="number" v-model="form.latitude" class="input" />
+              <label class="label">
+                Latitude
+              </label>
+
+              <input
+                type="number"
+                v-model="form.latitude"
+                class="input"
+              />
             </div>
 
             <div>
-              <label class="label">Longitude</label>
-              <input type="number" v-model="form.longitude" class="input" />
+              <label class="label">
+                Longitude
+              </label>
+
+              <input
+                type="number"
+                v-model="form.longitude"
+                class="input"
+              />
             </div>
+
           </div>
 
+          <!-- MAP -->
           <div class="overflow-hidden border shadow rounded-2xl">
-            <div id="map" class="h-72"></div>
+
+            <div
+              id="map"
+              class="w-full h-72"
+            ></div>
+
           </div>
 
         </div>
+
       </section>
 
       <!-- ================= IMAGES ================= -->
       <section class="mb-10">
-        <h3 class="section-title">Dormitory Images</h3>
 
-        <div>
-          <label class="label">Upload Images</label>
+        <h3 class="section-title">
+          Dormitory Images
+        </h3>
+
+        <!-- Upload -->
+        <div class="p-4 border rounded-xl">
+
+          <label class="label">
+            Upload Images
+          </label>
+
           <input
             type="file"
             multiple
+            accept="image/*"
             @change="handleFiles"
             class="w-full p-2 border rounded-lg"
           />
+
           <p class="mt-2 text-sm text-gray-400">
             You can upload multiple images.
           </p>
+
         </div>
+
+        <!-- Preview -->
+        <div
+          v-if="files.length"
+          class="grid grid-cols-3 gap-3 mt-4 md:grid-cols-4"
+        >
+
+          <div
+            v-for="(file, index) in files"
+            :key="index"
+            class="overflow-hidden border rounded-lg"
+          >
+
+            <img
+              :src="URL.createObjectURL(file)"
+              class="object-cover w-full h-24"
+            />
+
+          </div>
+
+        </div>
+
       </section>
 
       <!-- SUBMIT -->
@@ -114,12 +219,16 @@
         :disabled="isSubmitting"
         class="w-full py-4 text-lg font-semibold text-white transition bg-blue-600 rounded-2xl hover:bg-blue-700 disabled:opacity-50"
       >
+
         {{ isSubmitting
           ? "Submitting..."
-          : "Submit Dormitory (Pending Approval)" }}
+          : "Submit Dormitory (Pending Approval)"
+        }}
+
       </button>
 
     </div>
+
   </div>
 </template>
 
