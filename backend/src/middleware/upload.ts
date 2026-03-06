@@ -1,35 +1,31 @@
 import multer from "multer"
-import path from "path"
-import fs from "fs"
-
-/* ================= UPLOAD DIRECTORY ================= */
-
-const uploadPath = path.join(process.cwd(), "uploads")
-
-// create uploads folder if not exists
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true })
-}
 
 /* ================= STORAGE ================= */
 
-const storage = multer.diskStorage({
+const storage = multer.memoryStorage()
 
-  destination: (req, file, cb) => {
-    cb(null, uploadPath)
-  },
+/* ================= FILE FILTER ================= */
 
-  filename: (req, file, cb) => {
-    const uniqueName =
-      Date.now() + "-" + file.originalname
+const fileFilter = (
+  req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
 
-    cb(null, uniqueName)
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true)
+  } else {
+    cb(new Error("Only image files allowed"))
   }
 
-})
+}
 
 /* ================= EXPORT ================= */
 
 export const uploadSlipMiddleware = multer({
-  storage
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter
 })

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 import { RoomStatus } from "@prisma/client";
+import supabase from "../utils/supabase"
 
 export const createDormitory = async (req: Request, res: Response) => {
   try {
@@ -54,18 +55,42 @@ export const createDormitory = async (req: Request, res: Response) => {
       },
     });
 
-    /* ================= 3️⃣ SAVE IMAGES ================= */
+    /* ================= 3️⃣ UPLOAD IMAGES TO SUPABASE ================= */
 
-    if (req.files && Array.isArray(req.files)) {
-      const images = req.files.map((file: any) => ({
-        imageUrl: `/uploads/${file.filename}`,
-        dormitoryId: dormitory.id,
-      }));
+if (req.files && Array.isArray(req.files)) {
 
-      await prisma.dormitoryImage.createMany({
-        data: images,
-      });
+  const uploadedImages: any[] = []
+
+  for (const file of req.files as Express.Multer.File[]) {
+
+    const fileName =
+      Date.now() + "-" + Math.round(Math.random() * 1e9)
+
+    const { error } = await supabase.storage
+      .from(process.env.SUPABASE_BUCKET!)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype
+      })
+
+    if (error) {
+      throw new Error(error.message)
     }
+
+    const { data } = supabase.storage
+      .from(process.env.SUPABASE_BUCKET!)
+      .getPublicUrl(fileName)
+
+    uploadedImages.push({
+      imageUrl: data.publicUrl,
+      dormitoryId: dormitory.id
+    })
+
+  }
+
+  await prisma.dormitoryImage.createMany({
+    data: uploadedImages
+  })
+}
 
     /* ================= 4️⃣ AUTO CREATE ROOMS ================= */
 

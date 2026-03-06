@@ -45,7 +45,7 @@
   class="relative h-[420px]"
 >
   <img
-    :src="BASE_URL + dormitory.images[currentImage]?.imageUrl"
+    :src="dormitory.images[currentImage].imageUrl"
     class="object-cover w-full h-full"
   />
 
