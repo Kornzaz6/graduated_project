@@ -29,6 +29,7 @@ import OwnerComfirmPayment_page from "@/views/OwnerComfirmPayment_page.vue"
 import OwnerProfile_page from "@/views/OwnerProfile_page.vue"
 import OwnerTenants_page from "@/views/OwnerTenants_page.vue"
 import OwnerMangedormitoryInfo_page from "@/views/OwnerMangedormitoryInfo_page.vue"
+import OwnerContractDetail_page from "@/views/OwnerContractDetail_page.vue"
 
 // Member
 import MembercontractForm_page from "@/views/MembercontractForm_page.vue"
@@ -90,6 +91,7 @@ const routes = [
       { path: "profile", name: "OwnerProfile", component: OwnerProfile_page },
       { path: "edit-dormitory/:id", name: "EditDormitory", component: OwnerMangedormitoryInfo_page },
       { path: "manage-rooms/:id", name: "ManageRooms", component: OwnerMange_rooms_page },
+      { path: "contracts/:contractId", name: "OwnerContratDetail", component: OwnerContractDetail_page}
     ],
   },
 
