@@ -487,6 +487,10 @@ export const getOwnerTenants = async (req: Request, res: Response) => {
 
     const ownerId = (req as any).user.id
 
+    if(!ownerId){
+      return res.status(401).json({ message: "Unauthorized"})
+    }
+
     const tenants = await prisma.leaseContract.findMany({
 
       where: {
