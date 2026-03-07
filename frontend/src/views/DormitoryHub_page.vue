@@ -1,91 +1,85 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-
     <div class="relative px-6 pt-8 mx-auto max-w-7xl">
-
       <!-- ================= MAP ================= -->
-<div class="relative mb-12 overflow-hidden shadow-lg rounded-3xl">
-  <div id="map" class="w-full h-[480px] z-0"></div>
+      <div class="relative mb-12 overflow-hidden shadow-lg rounded-3xl">
+        <div id="map" class="w-full h-[480px] z-0"></div>
 
-  <!-- 🔥 FLOATING CONTROL BAR -->
-  <div class="absolute z-50 w-full px-6 top-6">
-    <div class="flex flex-col items-end gap-4 md:flex-row md:justify-end">
+        <!-- 🔥 FLOATING CONTROL BAR -->
+        <div class="absolute z-50 w-full px-6 top-6">
+          <div class="flex flex-col items-end gap-4 md:flex-row md:justify-end">
+            <!-- SEARCH -->
+            <div class="relative w-full max-w-md">
+              <input
+                v-model="universitySearch"
+                placeholder="ค้นหามหาวิทยาลัย..."
+                class="w-full px-5 py-3 transition border border-gray-200 rounded-full shadow-xl outline-none bg-white/95 backdrop-blur-md focus:ring-2 focus:ring-rose-400"
+                @focus="showResults = true"
+                @keyup.enter="manualSearch"
+              />
 
-      <!-- SEARCH -->
-      <div class="relative w-full max-w-md">
-        <input
-          v-model="universitySearch"
-          placeholder="ค้นหามหาวิทยาลัย..."
-          class="w-full px-5 py-3 transition border border-gray-200 rounded-full shadow-xl outline-none bg-white/95 backdrop-blur-md focus:ring-2 focus:ring-rose-400"
-          @focus="showResults = true"
-          @keyup.enter="manualSearch"
-        />
+              <!-- DROPDOWN -->
+              <ul
+                v-if="showResults && results.length"
+                class="absolute left-0 right-0 z-[999] mt-2 overflow-auto bg-white border shadow-2xl rounded-2xl max-h-60"
+              >
+                <li
+                  v-for="(item, index) in results"
+                  :key="index"
+                  class="px-4 py-3 text-sm transition cursor-pointer hover:bg-gray-100"
+                  @click="selectUniversity(item)"
+                >
+                  {{ item.display_name }}
+                </li>
+              </ul>
+            </div>
 
-        <!-- DROPDOWN -->
-        <ul
-          v-if="showResults && results.length"
-          class="absolute left-0 right-0 z-[999] mt-2 overflow-auto bg-white border shadow-2xl rounded-2xl max-h-60"
-        >
-          <li
-            v-for="(item, index) in results"
-            :key="index"
-            class="px-4 py-3 text-sm transition cursor-pointer hover:bg-gray-100"
-            @click="selectUniversity(item)"
-          >
-            {{ item.display_name }}
-          </li>
-        </ul>
+            <!-- FILTER GROUP -->
+            <div
+              class="flex items-center gap-4 px-4 py-2 rounded-full shadow-xl bg-white/95 backdrop-blur-md"
+            >
+              <select
+                v-model="selectedType"
+                class="px-3 py-1 text-sm bg-transparent border-none outline-none"
+              >
+                <option value="">ทุกประเภท</option>
+                <option value="Male">ชาย</option>
+                <option value="Female">หญิง</option>
+                <option value="Mixed">รวม</option>
+              </select>
+
+              <div class="w-px h-5 bg-gray-200"></div>
+
+              <select
+                v-model="radius"
+                class="px-3 py-1 text-sm bg-transparent border-none outline-none"
+              >
+                <option :value="1">1 กม.</option>
+                <option :value="3">3 กม.</option>
+                <option :value="5">5 กม.</option>
+                <option :value="10">10 กม.</option>
+              </select>
+
+              <div class="w-px h-5 bg-gray-200"></div>
+
+              <span class="text-sm text-gray-500 whitespace-nowrap">
+                {{ filteredDormitories.length }} แห่ง
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <!-- FILTER GROUP -->
-      <div class="flex items-center gap-4 px-4 py-2 rounded-full shadow-xl bg-white/95 backdrop-blur-md">
-
-        <select
-          v-model="selectedType"
-          class="px-3 py-1 text-sm bg-transparent border-none outline-none"
-        >
-          <option value="">ทุกประเภท</option>
-          <option value="Male">ชาย</option>
-          <option value="Female">หญิง</option>
-          <option value="Mixed">รวม</option>
-        </select>
-
-        <div class="w-px h-5 bg-gray-200"></div>
-
-        <select
-          v-model="radius"
-          class="px-3 py-1 text-sm bg-transparent border-none outline-none"
-        >
-          <option :value="1">1 กม.</option>
-          <option :value="3">3 กม.</option>
-          <option :value="5">5 กม.</option>
-          <option :value="10">10 กม.</option>
-        </select>
-
-        <div class="w-px h-5 bg-gray-200"></div>
-
-        <span class="text-sm text-gray-500 whitespace-nowrap">
-          {{ filteredDormitories.length }} แห่ง
-        </span>
-
-      </div>
-
-    </div>
-  </div>
-</div>
 
       <!-- ================= TITLE ================= -->
-      <h2 class="mb-6 text-2xl font-semibold">
-        หอพักทั้งหมด
-      </h2>
+      <h2 class="mb-6 text-2xl font-semibold">หอพักทั้งหมด</h2>
       <!-- สมัครสมาชิก -->
-  <button
-    v-if="!isMember"
-    @click="goToRegister"
-    class="px-4 py-2 text-sm font-medium text-white transition rounded-full shadow-md bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-90"
-  >
-    สมัครสมาชิก
-  </button>
+      <button
+        v-if="!isMember"
+        @click="goToRegister"
+        class="px-4 py-2 text-sm font-medium text-white transition rounded-full shadow-md bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-90"
+      >
+        สมัครสมาชิก
+      </button>
 
       <!-- ================= GRID ================= -->
       <TransitionGroup
@@ -104,8 +98,8 @@
           >
             <div class="overflow-hidden">
               <img
-                v-if="dorm.images?.length"
-                :src="`http://localhost:5000${dorm.images[0].imageUrl}`"
+                loading="lazy"
+                :src="dorm.images?.[0]?.imageUrl || '/placeholder-dorm.jpg'"
                 class="object-cover w-full h-56 transition duration-500 group-hover:scale-105"
               />
             </div>
@@ -131,13 +125,9 @@
       </TransitionGroup>
 
       <!-- NO RESULT -->
-      <div
-        v-if="filteredDormitories.length === 0"
-        class="mt-12 text-center text-gray-500"
-      >
+      <div v-if="filteredDormitories.length === 0" class="mt-12 text-center text-gray-500">
         ไม่พบหอพักในรัศมีที่เลือก
       </div>
-
     </div>
   </div>
 </template>
@@ -172,9 +162,7 @@ let markers: L.Marker[] = []
 
 const currentUser = ref<any>(null)
 
-const isMember = computed(() =>
-  currentUser.value?.role === 'MEMBER'
-)
+const isMember = computed(() => currentUser.value?.role === 'MEMBER')
 
 const goToRegister = () => {
   if (!currentUser.value) {
@@ -228,7 +216,7 @@ const filteredDormitories = computed(() => {
         selectedCenter.value?.lat || 0,
         selectedCenter.value?.lon || 0,
         d.latitude,
-        d.longitude,
+        d.longitude
       )
 
       return distance <= radius.value
@@ -346,8 +334,8 @@ const searchUniversity = async (keyword: string) => {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(
-        keyword,
-      )}`,
+        keyword
+      )}`
     )
 
     const data = await response.json()
