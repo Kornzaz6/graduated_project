@@ -18,10 +18,10 @@
       >
         <!-- Image -->
         <img
-          v-if="dorm.images?.length"
-          :src="`${BASE_URL}${dorm.images[0].imageUrl}`"
-          class="object-cover w-full h-40 mb-3 rounded-lg"
-        />
+  :src="dorm.images?.[0]?.imageUrl"
+  @error="handleImgError"
+  class="object-cover w-full h-56"
+/>
 
         <h2 class="text-lg font-semibold">
           {{ dorm.name }}
@@ -93,6 +93,11 @@ const dormitories = ref<any[]>([])
 const loading = ref(true)
 
 const user = JSON.parse(localStorage.getItem("user") || "null")
+
+const handleImgError = (e: Event) => {
+  const img = e.target as HTMLImageElement
+  img.src = "/placeholder-dorm.jpg"
+}
 
 const fetchMyDormitories = async () => {
   if (!user?.id) {
