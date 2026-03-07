@@ -485,21 +485,33 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
 export const getOwnerTenants = async (req: Request, res: Response) => {
   try {
 
-    const ownerId = (req as any).user.id
+    const userId = (req as any).user?.id
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" })
+      return
+    }
+
+    // 🔥 หา owner ก่อน
+    const owner = await prisma.owner.findUnique({
+      where: { userId }
+    })
+
+    if (!owner) {
+      res.json([])
+      return
+    }
 
     const tenants = await prisma.leaseContract.findMany({
-
       where: {
         status: "ACTIVE",
         room: {
           dormitory: {
-            ownerId
+            ownerId: owner.id
           }
         }
       },
-
       include: {
-
         user: {
           select: {
             id: true,
@@ -509,7 +521,6 @@ export const getOwnerTenants = async (req: Request, res: Response) => {
             lastName: true
           }
         },
-
         room: {
           select: {
             roomNumber: true,
@@ -521,9 +532,7 @@ export const getOwnerTenants = async (req: Request, res: Response) => {
             }
           }
         }
-
       }
-
     })
 
     res.json(tenants)
