@@ -22,8 +22,6 @@ app.use(cors({
 
 app.use(express.json())
 
-app.use("/upload", express.static("upload"))
-
 /* ================= HEALTH CHECK ================= */
 
 app.get("/", (_req, res) => {

@@ -596,28 +596,53 @@ export const uploadDormitoryImagesController = async (
   res: Response
 ) => {
   try {
+
     const dormId = Number(req.params.id)
 
     if (!req.files || !(req.files instanceof Array)) {
-      return res.status(400).json({ message: "No images uploaded" })
+      return res.status(400).json({ message: "No files uploaded" })
     }
 
-    const images = await Promise.all(
-      req.files.map((file: Express.Multer.File) => {
-        return prisma.dormitoryImage.create({
-          data: {
-            dormitoryId: dormId,
-            imageUrl: `/uploads/${file.filename}`
-          }
+    const images = []
+
+    for (const file of req.files) {
+
+      const fileName = `${Date.now()}-${file.originalname}`
+
+      const { error } = await supabase.storage
+        .from("dormitories")
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype
         })
+
+      if (error) {
+        console.error(error)
+        continue
+      }
+
+      const publicUrl =
+        `${process.env.SUPABASE_URL}/storage/v1/object/public/dormitories/${fileName}`
+
+      const img = await prisma.dormitoryImage.create({
+        data: {
+          dormitoryId: dormId,
+          imageUrl: publicUrl
+        }
       })
-    )
+
+      images.push(img)
+    }
 
     res.json(images)
 
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: "Upload failed" })
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+      message: "Upload failed"
+    })
+
   }
 }
 
