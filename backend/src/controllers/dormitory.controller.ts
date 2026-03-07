@@ -590,3 +590,53 @@ export const getPendingDormitories = async (req: Request, res: Response) => {
     })
   }
 }
+
+export const uploadDormitoryImagesController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const dormId = Number(req.params.id)
+
+    if (!req.files || !(req.files instanceof Array)) {
+      return res.status(400).json({ message: "No images uploaded" })
+    }
+
+    const images = await Promise.all(
+      req.files.map((file: Express.Multer.File) => {
+        return prisma.dormitoryImage.create({
+          data: {
+            dormitoryId: dormId,
+            imageUrl: `/uploads/${file.filename}`
+          }
+        })
+      })
+    )
+
+    res.json(images)
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Upload failed" })
+  }
+}
+
+export const deleteDormitoryImage = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+
+    const imageId = Number(req.params.imageId)
+
+    await prisma.dormitoryImage.delete({
+      where: { id: imageId }
+    })
+
+    res.json({ message: "Image deleted" })
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Delete failed" })
+  }
+}

@@ -13,6 +13,8 @@ import {
   approveDormitory,
   rejectDormitory,
   getPendingDormitories,
+  uploadDormitoryImagesController,
+  deleteDormitoryImage
 } from "../controllers/dormitory.controller";
 
 import {
@@ -23,6 +25,8 @@ import {
 import { uploadDormitoryImages } from "../middleware/dormitory";
 import { uploadSlipMiddleware } from "../middleware/upload"; // ใช้ multer upload
 import { authMiddleware } from "../middleware/auth";
+
+
 
 const router = Router();
 
@@ -68,6 +72,20 @@ router.patch("/rooms/:id", updateRoom);
 
 // Delete room
 router.delete("/rooms/:id", deleteRoom);
+
+/* =========================
+   DORMITORY IMAGES
+========================= */
+
+// Upload dormitory images
+router.post(
+  "/:id/images",
+  uploadDormitoryImages.array("images"),
+  uploadDormitoryImagesController
+);
+
+// Delete dormitory image
+router.delete("/images/:imageId", deleteDormitoryImage);
 
 /* =========================
    ROOM IMAGES
