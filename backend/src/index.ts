@@ -10,6 +10,7 @@ import rentalRoutes from "./routes/rental"
 import leaseRoutes from "./routes/lease"
 import paymentRoutes from "./routes/payment"
 import reviewRoutes from "./routes/review"
+import contractRoute from "./routes/contract"
 
 const app = express()
 
@@ -38,6 +39,7 @@ app.use("/api/rental", rentalRoutes)
 app.use("/api/lease", leaseRoutes)
 app.use("/api/payments", paymentRoutes)
 app.use("/api/reviews", reviewRoutes)
+app.use("/api/contracts", contractRoute)
 
 /* ================= 404 ================= */
 

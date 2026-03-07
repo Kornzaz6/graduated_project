@@ -17,7 +17,7 @@
       กำลังโหลดข้อมูล...
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else-if="contract" class="space-y-6">
 
       <!-- ================= TENANT INFO ================= -->
       <div class="grid gap-6 md:grid-cols-2">
@@ -192,11 +192,11 @@ import api from "@/services/api"
 
 const route = useRoute()
 
-const contract = ref<any>(null)
+const contract = ref<any | null>(null)
 const payments = ref<any[]>([])
 const loading = ref(true)
 
-/* ================= FETCH DATA ================= */
+/* ================= FETCH CONTRACT ================= */
 
 const fetchContract = async () => {
 
@@ -216,19 +216,21 @@ const fetchContract = async () => {
 
 }
 
+/* ================= FETCH PAYMENTS ================= */
+
 const fetchPayments = async () => {
 
   try {
 
     const { data } = await api.get(
-      `/lease/${route.params.contractId}`
+      `/payments/contract/${route.params.contractId}`
     )
 
-    contract.value = data
+    payments.value = data
 
   } catch (error) {
 
-    console.error("Fetch contract error:", error)
+    console.error("Fetch payments error:", error)
 
   }
 
@@ -237,9 +239,7 @@ const fetchPayments = async () => {
 /* ================= UTIL ================= */
 
 const formatDate = (date: string) => {
-
   return new Date(date).toLocaleDateString("th-TH")
-
 }
 
 const formatMonth = (date: string) => {
@@ -309,8 +309,12 @@ const paymentStatusClass = (status: string) => {
 
 onMounted(async () => {
 
-  await fetchContract()
-  await fetchPayments()
+  loading.value = true
+
+  await Promise.all([
+    fetchContract(),
+    fetchPayments()
+  ])
 
   loading.value = false
 
