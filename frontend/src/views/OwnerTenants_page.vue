@@ -16,6 +16,29 @@
       </p>
     </div>
 
+    <div class="flex flex-wrap gap-4 mt-4">
+
+  <!-- SEARCH -->
+  <input
+    v-model="search"
+    type="text"
+    placeholder="ค้นหาชื่อผู้เช่า หรือ ห้อง..."
+    class="w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+  />
+
+  <!-- FILTER -->
+  <select
+    v-model="statusFilter"
+    class="px-4 py-2 border rounded-lg"
+  >
+    <option value="">ทุกสถานะ</option>
+    <option value="ACTIVE">กำลังเช่า</option>
+    <option value="WAITING_OWNER_APPROVAL">รออนุมัติ</option>
+    <option value="EXPIRED">หมดสัญญา</option>
+  </select>
+
+</div>
+
     <!-- LOADING -->
     <div v-if="loading" class="p-10 text-center text-gray-500">
       กำลังโหลดข้อมูล...
@@ -45,7 +68,7 @@
         <tbody>
 
           <tr
-            v-for="tenant in tenants"
+            v-for="tenant in filteredTenants"
             :key="tenant.id"
             class="border-t hover:bg-gray-50"
           >
@@ -109,11 +132,11 @@
             <td class="px-6 py-4">
 
               <button
-                class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
-                @click="viewContract(tenant.id)"
-              >
-                ดูสัญญา
-              </button>
+  class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+  @click="selectedTenant = tenant"
+>
+  ดูสัญญา
+</button>
 
             </td>
 
@@ -133,12 +156,79 @@
 
     </div>
 
+    <!-- TENANT MODAL -->
+<div
+  v-if="selectedTenant"
+  class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40"
+>
+
+  <div class="w-full max-w-lg p-6 bg-white rounded-xl">
+
+    <h2 class="mb-4 text-xl font-bold">
+      ข้อมูลผู้เช่า
+    </h2>
+
+    <div class="space-y-2 text-sm">
+
+      <p><b>ชื่อ:</b>
+        {{ selectedTenant.user.firstName }}
+        {{ selectedTenant.user.lastName }}
+      </p>
+
+      <p><b>Email:</b>
+        {{ selectedTenant.user.email }}
+      </p>
+
+      <p><b>หอพัก:</b>
+        {{ selectedTenant.room.dormitory.name }}
+      </p>
+
+      <p><b>ห้อง:</b>
+        {{ selectedTenant.room.roomNumber }}
+      </p>
+
+      <p><b>เริ่มสัญญา:</b>
+        {{ formatDate(selectedTenant.startDate) }}
+      </p>
+
+      <p><b>สิ้นสุด:</b>
+        {{ formatDate(selectedTenant.endDate) }}
+      </p>
+
+      <p><b>สถานะ:</b>
+        {{ statusText(selectedTenant.status) }}
+      </p>
+
+    </div>
+
+    <div class="flex justify-end gap-2 mt-6">
+
+      <button
+        class="px-4 py-2 text-white bg-blue-500 rounded"
+        @click="viewContract(selectedTenant.id)"
+      >
+        ดูสัญญา
+      </button>
+
+      <button
+        class="px-4 py-2 text-white bg-gray-500 rounded"
+        @click="selectedTenant = null"
+      >
+        ปิด
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
   </div>
 </template>
 
 <script setup lang="ts">
 
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed } from "vue"
 import { useRouter } from "vue-router"
 import api from "@/services/api"
 
@@ -146,6 +236,30 @@ const tenants = ref<any[]>([])
 const loading = ref(true)
 
 const router = useRouter()
+
+const search = ref("")
+const statusFilter = ref("")
+const selectedTenant = ref<any | null>(null)
+
+const statusText = (status: string) => {
+
+  switch (status) {
+
+    case "ACTIVE":
+      return "กำลังเช่า"
+
+    case "WAITING_OWNER_APPROVAL":
+      return "รออนุมัติ"
+
+    case "EXPIRED":
+      return "หมดสัญญา"
+
+    default:
+      return status
+
+  }
+
+}
 
 /* ================= FETCH TENANTS ================= */
 
@@ -172,7 +286,11 @@ const fetchTenants = async () => {
 /* ================= FORMAT DATE ================= */
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString()
+  return new Date(date).toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  })
 }
 
 /* ================= REMAINING MONTH ================= */
@@ -182,9 +300,12 @@ const getRemainingMonths = (endDate: string) => {
   const end = new Date(endDate)
   const now = new Date()
 
-  const diff = end.getTime() - now.getTime()
+  const years = end.getFullYear() - now.getFullYear()
+  const months = end.getMonth() - now.getMonth()
 
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24 * 30)))
+  const total = years * 12 + months
+
+  return Math.max(0, total)
 
 }
 
@@ -217,6 +338,32 @@ const viewContract = (contractId: number) => {
   router.push(`/owner/contracts/${contractId}`)
 
 }
+
+const filteredTenants = computed(() => {
+
+  return tenants.value.filter((tenant) => {
+
+    const name =
+      `${tenant.user.firstName} ${tenant.user.lastName}`
+        .toLowerCase()
+
+    const room =
+      tenant.room.roomNumber
+        .toString()
+
+    const matchSearch =
+      name.includes(search.value.toLowerCase()) ||
+      room.includes(search.value)
+
+    const matchStatus =
+      !statusFilter.value ||
+      tenant.status === statusFilter.value
+
+    return matchSearch && matchStatus
+
+  })
+
+})
 
 /* ================= LIFECYCLE ================= */
 
