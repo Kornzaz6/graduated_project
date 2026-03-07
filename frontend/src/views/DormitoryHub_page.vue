@@ -96,10 +96,19 @@
           <div
             class="overflow-hidden transition duration-300 bg-white shadow-sm rounded-3xl hover:shadow-xl"
           >
-            <div class="overflow-hidden">
+            <div class="relative w-full h-56 overflow-hidden bg-gray-200">
+              <!-- Skeleton -->
+              <div
+                v-if="!dorm.images?.length"
+                class="absolute inset-0 bg-gray-300 animate-pulse"
+              ></div>
+
+              <!-- Image -->
               <img
+                v-if="dorm.images?.length"
                 loading="lazy"
-                :src="dorm.images?.[0]?.imageUrl || '/placeholder-dorm.jpg'"
+                :src="dorm.images[0].imageUrl"
+                @error="handleImgError"
                 class="object-cover w-full h-56 transition duration-500 group-hover:scale-105"
               />
             </div>
@@ -181,6 +190,11 @@ onMounted(() => {
 
 const goToDetail = (id: number) => {
   router.push(`/dormitories/${id}`)
+}
+
+const handleImgError = (e: Event) => {
+  const img = e.target as HTMLImageElement
+  img.src = '/placeholder-dorm.jpg'
 }
 
 // =========================
