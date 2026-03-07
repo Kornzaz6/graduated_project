@@ -485,10 +485,10 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
 export const getOwnerTenants = async (req: Request, res: Response) => {
   try {
 
-    const ownerId = (req as any).user.id
+    const ownerId = (req as any).user?.id
 
-    if(!ownerId){
-      return res.status(401).json({ message: "Unauthorized"})
+    if (!ownerId) {
+      return res.status(401).json({ message: "Unauthorized" })
     }
 
     const tenants = await prisma.leaseContract.findMany({
@@ -497,7 +497,7 @@ export const getOwnerTenants = async (req: Request, res: Response) => {
         status: "ACTIVE",
         room: {
           dormitory: {
-            ownerId
+            ownerId: ownerId
           }
         }
       },
