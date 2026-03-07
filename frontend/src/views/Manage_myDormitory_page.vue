@@ -48,21 +48,33 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex gap-2 mt-4">
-          <router-link
-            :to="`/owner/edit-dormitory/${dorm.id}`"
-            class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
-          >
-            Edit
-          </router-link>
+        <div class="flex flex-wrap gap-2 mt-4">
 
-          <button
-            @click="deleteDormitory(dorm.id)"
-            class="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
-          >
-            Delete
-          </button>
-        </div>
+  <!-- EDIT DORMITORY -->
+  <router-link
+    :to="`/owner/edit-dormitory/${dorm.id}`"
+    class="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
+  >
+    Edit Dormitory
+  </router-link>
+
+  <!-- MANAGE ROOMS -->
+  <router-link
+    :to="`/owner/manage-rooms/${dorm.id}`"
+    class="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+  >
+    Manage Rooms
+  </router-link>
+
+  <!-- DELETE -->
+  <button
+    @click="deleteDormitory(dorm.id)"
+    class="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+  >
+    Delete
+  </button>
+
+</div>
       </div>
     </div>
   </div>
