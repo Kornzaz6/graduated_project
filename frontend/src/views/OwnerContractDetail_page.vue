@@ -221,14 +221,14 @@ const fetchPayments = async () => {
   try {
 
     const { data } = await api.get(
-      `/payments/contract/${route.params.contractId}`
+      `/lease/${route.params.contractId}`
     )
 
-    payments.value = data
+    contract.value = data
 
   } catch (error) {
 
-    console.error("Fetch payments error:", error)
+    console.error("Fetch contract error:", error)
 
   }
 
