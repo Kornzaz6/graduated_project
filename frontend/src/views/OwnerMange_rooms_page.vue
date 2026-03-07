@@ -534,28 +534,36 @@ const saveEdit = async () => {
   if (!editingRoom.value) return
 
   try {
-    const formData = new FormData()
-
-    formData.append('roomNumber', editForm.roomNumber)
-    formData.append('price', editForm.price)
-    formData.append('size', editForm.size)
-    formData.append('floor', editForm.floor)
-    formData.append('capacity', editForm.capacity)
-
-    if (editImage.value) {
-      formData.append('image', editImage.value)
-    }
-
-    await api.patch(`/dormitories/rooms/${editingRoom.value.id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    // update room info
+    await api.patch(`/dormitories/rooms/${editingRoom.value.id}`, {
+      roomNumber: editForm.roomNumber,
+      price: Number(editForm.price),
+      size: Number(editForm.size),
+      floor: Number(editForm.floor),
+      capacity: Number(editForm.capacity)
     })
+
+    // upload image (optional)
+    if (editImage.value) {
+      const formData = new FormData()
+      formData.append("image", editImage.value)
+
+      await api.post(
+        `/dormitories/rooms/${editingRoom.value.id}/images`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" }
+        }
+      )
+    }
 
     editingRoom.value = null
     editImage.value = null
 
-    fetchRooms()
+    await fetchRooms()
+
   } catch (err) {
-    console.error('Update room error', err)
+    console.error("Update room error", err)
   }
 }
 

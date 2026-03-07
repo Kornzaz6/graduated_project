@@ -332,8 +332,7 @@ export const createRoom = async (req: Request, res: Response) => {
 
 export const updateRoom = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const roomId = Number(id);
+    const roomId = Number(req.params.id);
 
     if (!roomId || isNaN(roomId)) {
       return res.status(400).json({ message: "Invalid room ID" });
@@ -341,6 +340,7 @@ export const updateRoom = async (req: Request, res: Response) => {
 
     const { roomNumber, price, size, floor, capacity, status } = req.body;
 
+    // check room exists
     const existingRoom = await prisma.room.findUnique({
       where: { id: roomId },
     });
@@ -349,22 +349,30 @@ export const updateRoom = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Room not found" });
     }
 
+    // build update data safely
+    const updateData: any = {};
+
+    if (roomNumber !== undefined) updateData.roomNumber = roomNumber;
+    if (price !== undefined) updateData.price = Number(price);
+    if (size !== undefined) updateData.size = Number(size);
+    if (floor !== undefined) updateData.floor = Number(floor);
+    if (capacity !== undefined) updateData.capacity = Number(capacity);
+    if (status !== undefined) updateData.status = status;
+
     const updatedRoom = await prisma.room.update({
       where: { id: roomId },
-      data: {
-        roomNumber: roomNumber ?? existingRoom.roomNumber,
-        price: price !== undefined ? Number(price) : existingRoom.price,
-        size: size !== undefined ? Number(size) : existingRoom.size,
-        floor: floor !== undefined ? Number(floor) : existingRoom.floor,
-        capacity: capacity !== undefined ? Number(capacity) : existingRoom.capacity,
-        status: status ?? existingRoom.status,
-      },
+      data: updateData,
     });
 
     res.json(updatedRoom);
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to update room" });
+    console.error("Update room error:", error);
+
+    res.status(500).json({
+      message: "Failed to update room",
+      error: process.env.NODE_ENV === "development" ? error : undefined,
+    });
   }
 };
 
