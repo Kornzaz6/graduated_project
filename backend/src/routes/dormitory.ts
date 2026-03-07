@@ -14,7 +14,8 @@ import {
   rejectDormitory,
   getPendingDormitories,
   uploadDormitoryImagesController,
-  deleteDormitoryImage
+  deleteDormitoryImage,
+  updateDormitory
 } from "../controllers/dormitory.controller";
 
 import {
@@ -23,10 +24,8 @@ import {
 } from "../controllers/roomImage.controller";
 
 import { uploadDormitoryImages } from "../middleware/dormitory";
-import { uploadSlipMiddleware } from "../middleware/upload"; // ใช้ multer upload
+import { uploadSlipMiddleware } from "../middleware/upload";
 import { authMiddleware } from "../middleware/auth";
-
-
 
 const router = Router();
 
@@ -47,6 +46,10 @@ router.post(
   createDormitory
 );
 
+// 🔥 UPDATE DORMITORY (เพิ่มตรงนี้)
+router.patch("/:id", updateDormitory);
+
+
 /* =========================
    OWNER
 ========================= */
@@ -56,6 +59,7 @@ router.get("/owners/:ownerId", getOwnerDormitories);
 
 // Get dormitories by userId
 router.get("/owner/:userId", getMyDormitories);
+
 
 /* =========================
    ROOMS
@@ -73,6 +77,7 @@ router.patch("/rooms/:id", updateRoom);
 // Delete room
 router.delete("/rooms/:id", deleteRoom);
 
+
 /* =========================
    DORMITORY IMAGES
 ========================= */
@@ -86,6 +91,7 @@ router.post(
 
 // Delete dormitory image
 router.delete("/images/:imageId", deleteDormitoryImage);
+
 
 /* =========================
    ROOM IMAGES
@@ -104,6 +110,7 @@ router.delete(
   deleteRoomImage
 );
 
+
 /* =========================
    ADMIN ACTIONS
 ========================= */
@@ -113,6 +120,7 @@ router.patch("/:id/approve", authMiddleware, approveDormitory);
 
 // Reject dormitory
 router.patch("/:id/reject", authMiddleware, rejectDormitory);
+
 
 /* =========================
    SINGLE DORM (MUST BE LAST)

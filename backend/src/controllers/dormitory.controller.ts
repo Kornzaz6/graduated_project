@@ -640,3 +640,31 @@ export const deleteDormitoryImage = async (
     res.status(500).json({ message: "Delete failed" })
   }
 }
+
+export const updateDormitory = async (req: Request, res: Response) => {
+  try {
+
+    const id = Number(req.params.id)
+
+    const { name, address, type } = req.body
+
+    const dormitory = await prisma.dormitory.update({
+      where: { id },
+      data: {
+        name,
+        address,
+        type
+      }
+    })
+
+    res.json(dormitory)
+
+  } catch (error) {
+
+    console.error("Update dormitory error:", error)
+
+    res.status(500).json({
+      message: "Failed to update dormitory"
+    })
+  }
+}
