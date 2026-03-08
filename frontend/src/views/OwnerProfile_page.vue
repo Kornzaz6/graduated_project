@@ -336,6 +336,7 @@ const validateAccount = () => {
 /* ================= FETCH PROFILE ================= */
 
 const fetchProfile = async () => {
+
   try {
 
     loading.value = true
@@ -343,8 +344,6 @@ const fetchProfile = async () => {
     const res = await api.get(`/owners/profile/${currentUser.id}`)
 
     const data = res.data
-
-    /* ================= BASIC INFO ================= */
 
     form.firstName = data.firstName || ""
     form.lastName = data.lastName || ""
@@ -355,29 +354,25 @@ const fetchProfile = async () => {
     form.bankName = data.bankName || ""
     form.bankAccountName = data.bankAccountName || ""
 
-    /* ================= ACCOUNT ================= */
-
-    if (data.paymentType === "PROMPTPAY") {
-
-      rawAccount.value = data.promptPayId || ""
-
-    } else {
-
-      rawAccount.value = data.bankAccountNo || ""
-
+    if (data.account) {
+      rawAccount.value = data.account.replace(/\D/g, "")
     }
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error("Fetch profile error:", error)
-
     errorMessage.value = "Failed to load profile"
 
-  } finally {
+  }
+
+  finally {
 
     loading.value = false
 
   }
+
 }
 
 /* ================= SAVE PROFILE ================= */
@@ -393,8 +388,6 @@ const saveProfile = async () => {
 
     saving.value = true
 
-    /* ================= PREPARE DATA ================= */
-
     let payload: any = {
 
       firstName: form.firstName,
@@ -405,27 +398,19 @@ const saveProfile = async () => {
 
     }
 
+    if (form.paymentType === "PROMPTPAY") {
+
+      payload.promptPayId = rawAccount.value
+
+    }
+
     if (form.paymentType === "BANK") {
 
       payload.bankName = form.bankName
       payload.bankAccountName = form.bankAccountName
       payload.bankAccountNo = rawAccount.value
 
-      payload.promptPayId = null
-
     }
-
-    if (form.paymentType === "PROMPTPAY") {
-
-      payload.promptPayId = rawAccount.value
-
-      payload.bankName = null
-      payload.bankAccountName = null
-      payload.bankAccountNo = null
-
-    }
-
-    /* ================= SAVE ================= */
 
     await api.put(
       `/owners/profile/${currentUser.id}`,
@@ -434,7 +419,9 @@ const saveProfile = async () => {
 
     successMessage.value = "บันทึกข้อมูลเรียบร้อย"
 
-  } catch (error: any) {
+  }
+
+  catch (error: any) {
 
     console.error("Save profile error:", error)
 
@@ -442,7 +429,9 @@ const saveProfile = async () => {
       error.response?.data?.message ||
       "Update failed"
 
-  } finally {
+  }
+
+  finally {
 
     saving.value = false
 
