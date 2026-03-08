@@ -336,35 +336,48 @@ const validateAccount = () => {
 /* ================= FETCH PROFILE ================= */
 
 const fetchProfile = async () => {
-
   try {
 
-    const res = await api.get(
-      `/owners/profile/${currentUser.id}`
-    )
+    loading.value = true
+
+    const res = await api.get(`/owners/profile/${currentUser.id}`)
 
     const data = res.data
 
-    Object.assign(form, data)
+    /* ================= BASIC INFO ================= */
 
-    rawAccount.value = data.bankAccountNo || ""
+    form.firstName = data.firstName || ""
+    form.lastName = data.lastName || ""
+    form.phone = data.phone || ""
 
-  }
+    form.paymentType = data.paymentType || "BANK"
 
-  catch (error) {
+    form.bankName = data.bankName || ""
+    form.bankAccountName = data.bankAccountName || ""
+
+    /* ================= ACCOUNT ================= */
+
+    if (data.paymentType === "PROMPTPAY") {
+
+      rawAccount.value = data.promptPayId || ""
+
+    } else {
+
+      rawAccount.value = data.bankAccountNo || ""
+
+    }
+
+  } catch (error) {
 
     console.error("Fetch profile error:", error)
 
     errorMessage.value = "Failed to load profile"
 
-  }
-
-  finally {
+  } finally {
 
     loading.value = false
 
   }
-
 }
 
 /* ================= SAVE PROFILE ================= */
@@ -380,20 +393,48 @@ const saveProfile = async () => {
 
     saving.value = true
 
+    /* ================= PREPARE DATA ================= */
+
+    let payload: any = {
+
+      firstName: form.firstName,
+      lastName: form.lastName,
+      phone: form.phone,
+
+      paymentType: form.paymentType
+
+    }
+
+    if (form.paymentType === "BANK") {
+
+      payload.bankName = form.bankName
+      payload.bankAccountName = form.bankAccountName
+      payload.bankAccountNo = rawAccount.value
+
+      payload.promptPayId = null
+
+    }
+
+    if (form.paymentType === "PROMPTPAY") {
+
+      payload.promptPayId = rawAccount.value
+
+      payload.bankName = null
+      payload.bankAccountName = null
+      payload.bankAccountNo = null
+
+    }
+
+    /* ================= SAVE ================= */
+
     await api.put(
       `/owners/profile/${currentUser.id}`,
-      {
-        ...form,
-        bankAccountNo: rawAccount.value,
-        paymentType: form.paymentType
-      }
+      payload
     )
 
     successMessage.value = "บันทึกข้อมูลเรียบร้อย"
 
-  }
-
-  catch (error: any) {
+  } catch (error: any) {
 
     console.error("Save profile error:", error)
 
@@ -401,9 +442,7 @@ const saveProfile = async () => {
       error.response?.data?.message ||
       "Update failed"
 
-  }
-
-  finally {
+  } finally {
 
     saving.value = false
 
