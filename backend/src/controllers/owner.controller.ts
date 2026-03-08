@@ -346,14 +346,19 @@ export const getOwnerProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Owner not found" })
     }
 
+    let account: string | null = null
+
+    if (owner.promptPayId) {
+      account = maskAccount(decrypt(owner.promptPayId))
+    }
+
+    if (!account && owner.bankAccountNo) {
+      account = maskAccount(decrypt(owner.bankAccountNo))
+    }
+
     res.json({
       ...owner,
-      bankAccountNo: owner.bankAccountNo
-        ? maskAccount(decrypt(owner.bankAccountNo))
-        : null,
-      bankAccountName: owner.bankAccountName
-        ? decrypt(owner.bankAccountName)
-        : null
+      account
     })
 
   } catch (error) {
@@ -367,6 +372,7 @@ export const getOwnerProfile = async (req: Request, res: Response) => {
 ===================================================== */
 export const updateOwnerProfile = async (req: Request, res: Response) => {
   try {
+
     const userId = Number(req.params.userId)
 
     if (!userId || isNaN(userId)) {
@@ -380,10 +386,9 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
       paymentType,
       bankName,
       bankAccountName,
-      bankAccountNo
+      bankAccountNo,
+      promptPayId
     } = req.body
-
-    /* ================= VALIDATE PAYMENT TYPE ================= */
 
     if (!paymentType || !["BANK", "PROMPTPAY"].includes(paymentType)) {
       return res.status(400).json({
@@ -391,67 +396,75 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
       })
     }
 
-    const cleanAccount = bankAccountNo
+    const cleanBank = bankAccountNo
       ? String(bankAccountNo).replace(/\D/g, "")
       : ""
 
-    /* ================= VALIDATE DATA ================= */
+    const cleanPromptPay = promptPayId
+      ? String(promptPayId).replace(/\D/g, "")
+      : ""
+
+    /* ================= VALIDATE ================= */
 
     if (paymentType === "PROMPTPAY") {
-      if (!cleanAccount || !/^\d{10}$|^\d{13}$/.test(cleanAccount)) {
+
+      if (!/^\d{10}$|^\d{13}$/.test(cleanPromptPay)) {
         return res.status(400).json({
           message: "Invalid PromptPay ID (10 or 13 digits required)"
         })
       }
+
     }
 
     if (paymentType === "BANK") {
+
       if (!bankName?.trim()) {
         return res.status(400).json({
           message: "Bank name is required"
         })
       }
 
-      if (!cleanAccount) {
+      if (!cleanBank) {
         return res.status(400).json({
           message: "Bank account number is required"
         })
       }
+
     }
 
-    /* ================= PREPARE UPDATE DATA ================= */
+    /* ================= UPDATE DATA ================= */
 
     const updateData: any = {
       paymentType
     }
 
-    if (firstName !== undefined) {
-      updateData.firstName = firstName.trim()
-    }
-
-    if (lastName !== undefined) {
-      updateData.lastName = lastName.trim()
-    }
-
-    if (phone !== undefined) {
-      updateData.phone = phone.trim()
-    }
+    if (firstName !== undefined) updateData.firstName = firstName.trim()
+    if (lastName !== undefined) updateData.lastName = lastName.trim()
+    if (phone !== undefined) updateData.phone = phone.trim()
 
     if (paymentType === "BANK") {
+
       updateData.bankName = bankName.trim()
+
       updateData.bankAccountName = bankAccountName
         ? encrypt(bankAccountName.trim())
         : null
-      updateData.bankAccountNo = encrypt(cleanAccount)
+
+      updateData.bankAccountNo = encrypt(cleanBank)
+
+      updateData.promptPayId = null
+
     }
 
     if (paymentType === "PROMPTPAY") {
+
+      updateData.promptPayId = encrypt(cleanPromptPay)
+
       updateData.bankName = null
       updateData.bankAccountName = null
-      updateData.bankAccountNo = encrypt(cleanAccount)
-    }
+      updateData.bankAccountNo = null
 
-    /* ================= UPDATE ================= */
+    }
 
     const updated = await prisma.owner.update({
       where: { userId },
@@ -462,23 +475,33 @@ export const updateOwnerProfile = async (req: Request, res: Response) => {
 
     let maskedAccount: string | null = null
 
-    if (updated.bankAccountNo) {
-      try {
-        const decrypted = decrypt(updated.bankAccountNo)
-        maskedAccount = maskAccount(decrypted)
-      } catch {
-        maskedAccount = null
+    try {
+
+      if (updated.promptPayId) {
+        maskedAccount = maskAccount(decrypt(updated.promptPayId))
       }
+
+      if (!maskedAccount && updated.bankAccountNo) {
+        maskedAccount = maskAccount(decrypt(updated.bankAccountNo))
+      }
+
+    } catch {
+      maskedAccount = null
     }
 
     return res.json({
       ...updated,
-      bankAccountNo: maskedAccount
+      account: maskedAccount
     })
 
   } catch (error) {
+
     console.error("UPDATE OWNER PROFILE ERROR:", error)
-    return res.status(500).json({ message: "Update failed" })
+
+    return res.status(500).json({
+      message: "Update failed"
+    })
+
   }
 }
 
