@@ -446,22 +446,7 @@ export const generatePaymentQR = async (req: Request, res: Response) => {
       })
     }
 
-    // 🔐 decrypt เสมอ (เพราะ DB เก็บ encrypted)
     const accountNumber = decrypt(owner.bankAccountNo)
-
-    // 🔥 รองรับเฉพาะ PromptPay
-    if (owner.paymentType !== "PROMPTPAY") {
-      return res.status(400).json({
-        message: "QR supported only for PromptPay"
-      })
-    }
-
-    // 🔎 validate PromptPay format
-    if (!/^\d{10}$|^\d{13}$/.test(accountNumber)) {
-      return res.status(400).json({
-        message: "Invalid PromptPay ID format"
-      })
-    }
 
     const latestPayment = contract.payments[0]
 
@@ -475,23 +460,60 @@ export const generatePaymentQR = async (req: Request, res: Response) => {
       })
     }
 
-    const payload = generatePromptPayQR(accountNumber, amount)
+    /* =====================================================
+       PROMPTPAY
+    ===================================================== */
 
-    const qrImage = await QRCode.toDataURL(payload)
+    if (owner.paymentType === "PROMPTPAY") {
 
-    return res.json({
-      amount,
-      qr: qrImage
+      if (!/^\d{10}$|^\d{13}$/.test(accountNumber)) {
+        return res.status(400).json({
+          message: "Invalid PromptPay ID format"
+        })
+      }
+
+      const payload = generatePromptPayQR(accountNumber, amount)
+
+      const qrImage = await QRCode.toDataURL(payload)
+
+      return res.json({
+        type: "PROMPTPAY",
+        amount,
+        qr: qrImage
+      })
+    }
+
+    /* =====================================================
+       BANK TRANSFER
+    ===================================================== */
+
+    if (owner.paymentType === "BANK") {
+
+      return res.json({
+        type: "BANK",
+        bankName: owner.bankName,
+        accountName: owner.bankAccountName,
+        accountNo: accountNumber,
+        amount
+      })
+
+    }
+
+    return res.status(400).json({
+      message: "Unsupported payment type"
     })
 
   } catch (error: any) {
+
     console.error("GENERATE QR ERROR:", error)
 
     return res.status(500).json({
-      message: error.message || "Failed to generate QR"
+      message: error.message || "Failed to generate payment info"
     })
+
   }
 }
+
 //owner create one-time payment record (without billing month, for custom charges)
 export const ownerCreatePayment = async (req: Request, res: Response) => {
   try {
@@ -535,6 +557,7 @@ export const ownerCreatePayment = async (req: Request, res: Response) => {
     })
   }
 }
+
 //owner generate custom QR (for one-time payment without creating a payment record)
 export const ownerGenerateCustomQR = async (req: Request, res: Response) => {
   try {
@@ -556,37 +579,61 @@ export const ownerGenerateCustomQR = async (req: Request, res: Response) => {
       })
     }
 
-    // 🔐 decrypt เสมอ (เพราะใน DB เก็บ encrypted)
-    const account = decrypt(owner.bankAccountNo)
+    const accountNumber = decrypt(owner.bankAccountNo)
 
-    // 🔥 รองรับเฉพาะ PROMPTPAY เท่านั้น
-    if (owner.paymentType !== "PROMPTPAY") {
-      return res.status(400).json({
-        message: "QR supported only for PromptPay"
+    const paymentAmount = Number(amount)
+
+    /* =====================================================
+       PROMPTPAY
+    ===================================================== */
+
+    if (owner.paymentType === "PROMPTPAY") {
+
+      if (!/^\d{10}$|^\d{13}$/.test(accountNumber)) {
+        return res.status(400).json({
+          message: "Invalid PromptPay ID format"
+        })
+      }
+
+      const payload = generatePromptPayQR(accountNumber, paymentAmount)
+
+      const qrImage = await QRCode.toDataURL(payload)
+
+      return res.json({
+        type: "PROMPTPAY",
+        amount: paymentAmount,
+        qr: qrImage
       })
     }
 
-    // 🔎 validate format
-    if (!/^\d{10}$|^\d{13}$/.test(account)) {
-      return res.status(400).json({
-        message: "Invalid PromptPay ID format"
+    /* =====================================================
+       BANK TRANSFER
+    ===================================================== */
+
+    if (owner.paymentType === "BANK") {
+
+      return res.json({
+        type: "BANK",
+        bankName: owner.bankName,
+        accountName: owner.bankAccountName,
+        accountNo: accountNumber,
+        amount: paymentAmount
       })
+
     }
 
-    const payload = generatePromptPayQR(account, Number(amount))
-
-    const qrImage = await QRCode.toDataURL(payload)
-
-    return res.json({
-      amount: Number(amount),
-      qr: qrImage
+    return res.status(400).json({
+      message: "Unsupported payment type"
     })
 
   } catch (error) {
+
     console.error("CUSTOM QR ERROR:", error)
+
     return res.status(500).json({
       message: "QR generation failed"
     })
+
   }
 }
 
