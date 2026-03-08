@@ -115,8 +115,17 @@ async function verifyPayment(paymentId: number) {
 
     if (!payment || !payment.slipImageUrl) return
 
-    const ownerAccount =
-      payment.contract.room.dormitory.owner.bankAccountNo
+    const owner = payment.contract.room.dormitory.owner
+
+let ownerAccount: string | null = null
+
+if (owner.paymentType === "PROMPTPAY" && owner.promptPayId) {
+  ownerAccount = decrypt(owner.promptPayId)
+}
+
+if (owner.paymentType === "BANK" && owner.bankAccountNo) {
+  ownerAccount = decrypt(owner.bankAccountNo)
+}
 
     let slipData = await tryDecodeQR(payment.slipImageUrl)
 
@@ -407,6 +416,7 @@ export const getPaymentsByContract = async (req: Request, res: Response) => {
 ===================================================== */
 export const generatePaymentQR = async (req: Request, res: Response) => {
   try {
+
     const contractId = Number(req.params.contractId)
 
     if (!contractId || isNaN(contractId)) {
@@ -440,13 +450,11 @@ export const generatePaymentQR = async (req: Request, res: Response) => {
 
     const owner = contract.room.dormitory.owner
 
-    if (!owner || !owner.bankAccountNo) {
+    if (!owner) {
       return res.status(400).json({
-        message: "Owner payment method not configured"
+        message: "Owner not found"
       })
     }
-
-    const accountNumber = decrypt(owner.bankAccountNo)
 
     const latestPayment = contract.payments[0]
 
@@ -460,19 +468,25 @@ export const generatePaymentQR = async (req: Request, res: Response) => {
       })
     }
 
-    /* =====================================================
-       PROMPTPAY
-    ===================================================== */
+    /* ================= PROMPTPAY ================= */
 
     if (owner.paymentType === "PROMPTPAY") {
 
-      if (!/^\d{10}$|^\d{13}$/.test(accountNumber)) {
+      if (!owner.promptPayId) {
         return res.status(400).json({
-          message: "Invalid PromptPay ID format"
+          message: "PromptPay not configured"
         })
       }
 
-      const payload = generatePromptPayQR(accountNumber, amount)
+      const promptPayId = decrypt(owner.promptPayId)
+
+      if (!/^\d{10}$|^\d{13}$/.test(promptPayId)) {
+        return res.status(400).json({
+          message: "Invalid PromptPay format"
+        })
+      }
+
+      const payload = generatePromptPayQR(promptPayId, amount)
 
       const qrImage = await QRCode.toDataURL(payload)
 
@@ -483,20 +497,25 @@ export const generatePaymentQR = async (req: Request, res: Response) => {
       })
     }
 
-    /* =====================================================
-       BANK TRANSFER
-    ===================================================== */
+    /* ================= BANK ================= */
 
     if (owner.paymentType === "BANK") {
+
+      if (!owner.bankAccountNo) {
+        return res.status(400).json({
+          message: "Bank account not configured"
+        })
+      }
+
+      const accountNo = decrypt(owner.bankAccountNo)
 
       return res.json({
         type: "BANK",
         bankName: owner.bankName,
         accountName: owner.bankAccountName,
-        accountNo: accountNumber,
+        accountNo,
         amount
       })
-
     }
 
     return res.status(400).json({
@@ -561,6 +580,7 @@ export const ownerCreatePayment = async (req: Request, res: Response) => {
 //owner generate custom QR (for one-time payment without creating a payment record)
 export const ownerGenerateCustomQR = async (req: Request, res: Response) => {
   try {
+
     const { ownerId, amount } = req.body
 
     if (!ownerId || !amount || Number(amount) <= 0) {
@@ -573,29 +593,27 @@ export const ownerGenerateCustomQR = async (req: Request, res: Response) => {
       where: { userId: Number(ownerId) }
     })
 
-    if (!owner || !owner.bankAccountNo) {
-      return res.status(400).json({
-        message: "Owner payment method not configured"
+    if (!owner) {
+      return res.status(404).json({
+        message: "Owner not found"
       })
     }
 
-    const accountNumber = decrypt(owner.bankAccountNo)
-
     const paymentAmount = Number(amount)
 
-    /* =====================================================
-       PROMPTPAY
-    ===================================================== */
+    /* ================= PROMPTPAY ================= */
 
     if (owner.paymentType === "PROMPTPAY") {
 
-      if (!/^\d{10}$|^\d{13}$/.test(accountNumber)) {
+      if (!owner.promptPayId) {
         return res.status(400).json({
-          message: "Invalid PromptPay ID format"
+          message: "PromptPay not configured"
         })
       }
 
-      const payload = generatePromptPayQR(accountNumber, paymentAmount)
+      const promptPayId = decrypt(owner.promptPayId)
+
+      const payload = generatePromptPayQR(promptPayId, paymentAmount)
 
       const qrImage = await QRCode.toDataURL(payload)
 
@@ -606,20 +624,25 @@ export const ownerGenerateCustomQR = async (req: Request, res: Response) => {
       })
     }
 
-    /* =====================================================
-       BANK TRANSFER
-    ===================================================== */
+    /* ================= BANK ================= */
 
     if (owner.paymentType === "BANK") {
+
+      if (!owner.bankAccountNo) {
+        return res.status(400).json({
+          message: "Bank account not configured"
+        })
+      }
+
+      const accountNo = decrypt(owner.bankAccountNo)
 
       return res.json({
         type: "BANK",
         bankName: owner.bankName,
         accountName: owner.bankAccountName,
-        accountNo: accountNumber,
+        accountNo,
         amount: paymentAmount
       })
-
     }
 
     return res.status(400).json({

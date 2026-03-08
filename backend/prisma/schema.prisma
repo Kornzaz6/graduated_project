@@ -129,6 +129,8 @@ model Owner {
 
   paymentType PaymentType @default(BANK)
 
+  promptPayId String? // 🔐 encrypted (phone / citizen id)
+
   bankName        String?
   bankAccountName String?
   bankAccountNo   String? // 🔐 encrypted
@@ -148,7 +150,7 @@ model Owner {
   updatedAt DateTime @updatedAt @default(now())
 
   dormitories Dormitory[]
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
