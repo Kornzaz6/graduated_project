@@ -91,8 +91,18 @@
           <div><strong>เลขบัญชี:</strong> {{ ownerInfo.bankAccountNo }}</div>
         </div>
 
-        <!-- QR -->
-        <div v-if="ownerInfo && !qrImage" class="mb-4 text-center text-gray-600">
+        <!-- PROMPTPAY QR -->
+<img
+  v-if="qrImage"
+  :src="qrImage"
+  class="mx-auto mb-6"
+/>
+
+<!-- BANK TRANSFER -->
+<div
+  v-if="ownerInfo && !qrImage"
+  class="mb-4 text-center text-gray-600"
+>
   กรุณาโอนเงินตามข้อมูลบัญชีด้านบน
 </div>
 
