@@ -10,11 +10,20 @@ import {
 
 const router = Router()
 
-router.get("/", getAllUsers)
-router.get("/:id", getUserById)
+/* ================= USERS ================= */
 
+router.get("/", getAllUsers)
+
+/* ================= PROFILE ================= */
+
+router.get("/:id", getUserById)
 router.patch("/:id", updateUserProfile)
+
+/* ================= PASSWORD ================= */
+
 router.patch("/:id/change-password", changePassword)
+
+/* ================= ADMIN ================= */
 
 router.patch("/:id/role", updateUserRole)
 router.patch("/:id/status", toggleUserStatus)

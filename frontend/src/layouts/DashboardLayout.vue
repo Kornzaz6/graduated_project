@@ -151,6 +151,14 @@
 
                   <router-link
                     v-if="isMember"
+                    :to="{ name: 'ManageMemberProfile'}"
+                    class="dropdown-item"
+                  >
+                    Profile
+                  </router-link>
+
+                  <router-link
+                    v-if="isMember"
                     :to="{ name: 'MemberDashboard' }"
                     class="dropdown-item"
                   >
