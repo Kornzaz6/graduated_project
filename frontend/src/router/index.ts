@@ -36,6 +36,7 @@ import MembercontractForm_page from "@/views/MembercontractForm_page.vue"
 import MemberPayment_page from "@/views/MemberPayment_page.vue"
 import MemberDashboard from "@/views/MemberDashboard_page.vue"
 import ApplyOwner_page from "@/views/ApplyOwner_page.vue"
+import ManageMemberProfile_page from "@/views/ManageMemberProfile_page.vue"
 
 const routes = [
   // 🌍 PUBLIC
@@ -56,6 +57,7 @@ const routes = [
       { path: "contract/:requestId", name: "MemberContract", component: MembercontractForm_page },
       { path: "payment/:contractId", name: "MemberPayment", component: MemberPayment_page },
       { path: "payments", name: "MemberPayments", component: MemberPayment_page }, // 🔥 เพิ่มรวมบิล
+      { path: "/profile", name: "ManageMemberProfile", component: ManageMemberProfile_page}
     ],
   },
 
