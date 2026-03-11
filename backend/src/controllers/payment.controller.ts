@@ -318,24 +318,14 @@ function parseQRData(data: string) {
 ===================================================== */
 async function runOCR(imageUrl: string) {
 
-  try {
+  const buffer = await loadImageBuffer(imageUrl)
 
-    const buffer = await loadImageBuffer(imageUrl)
+  const result = await Tesseract.recognize(
+    buffer,
+    "tha+eng"
+  )
 
-    const result = await Tesseract.recognize(
-      buffer,
-      "tha+eng"
-    )
-
-    return result.data.text
-
-  } catch (error) {
-
-    console.error("OCR ERROR:", error)
-
-    return ""
-
-  }
+  return result.data.text
 
 }
 
