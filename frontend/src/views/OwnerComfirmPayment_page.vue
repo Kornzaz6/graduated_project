@@ -12,23 +12,23 @@
         </p>
       </div>
 
-      <!-- CARD -->
+      <!-- LOADING -->
       <div v-if="loading" class="p-10 text-center bg-white shadow rounded-2xl">
         <p class="text-gray-500 animate-pulse">Loading payment details...</p>
       </div>
 
+      <!-- PAYMENT CARD -->
       <div
         v-else-if="payment"
         class="grid gap-8 p-8 bg-white shadow-xl rounded-2xl md:grid-cols-2"
       >
 
-        <!-- LEFT SIDE - PAYMENT INFO -->
+        <!-- LEFT SIDE -->
         <div class="space-y-6">
 
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold">Payment Information</h2>
 
-            <!-- STATUS BADGE -->
             <span
               class="px-3 py-1 text-xs font-semibold rounded-full"
               :class="statusBadge(payment.status)"
@@ -37,7 +37,23 @@
             </span>
           </div>
 
+          <!-- PAYMENT DATA -->
           <div class="space-y-3 text-sm">
+
+            <div class="flex justify-between">
+              <span class="text-gray-500">Tenant</span>
+              <span class="font-medium">
+                {{ payment.contract?.user?.firstName }}
+                {{ payment.contract?.user?.lastName }}
+              </span>
+            </div>
+
+            <div class="flex justify-between">
+              <span class="text-gray-500">Room</span>
+              <span class="font-medium">
+                {{ payment.contract?.room?.roomNumber }}
+              </span>
+            </div>
 
             <div class="flex justify-between">
               <span class="text-gray-500">Contract ID</span>
@@ -70,31 +86,47 @@
 
           </div>
 
-          <!-- AI RESULT CARD -->
-          <div class="p-4 border rounded-xl"
-               :class="payment.verifiedByAI ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'">
+          <!-- AI RESULT -->
+          <div
+            class="p-4 border rounded-xl"
+            :class="payment.verifiedByAI
+              ? 'border-green-200 bg-green-50'
+              : 'border-red-200 bg-red-50'"
+          >
 
             <div class="flex items-center gap-2 font-semibold">
-              <span v-if="payment.verifiedByAI" class="text-green-600">
+
+              <span
+                v-if="payment.verifiedByAI"
+                class="text-green-600"
+              >
                 ✔ AI Verified
               </span>
-              <span v-else class="text-red-600">
+
+              <span
+                v-else
+                class="text-red-600"
+              >
                 ⚠ AI Flagged
               </span>
+
             </div>
 
             <p
               v-if="payment.verificationNote"
               class="mt-2 text-sm"
-              :class="payment.verifiedByAI ? 'text-green-700' : 'text-red-700'"
+              :class="payment.verifiedByAI
+                ? 'text-green-700'
+                : 'text-red-700'"
             >
               {{ payment.verificationNote }}
             </p>
+
           </div>
 
         </div>
 
-        <!-- RIGHT SIDE - SLIP PREVIEW -->
+        <!-- RIGHT SIDE -->
         <div class="space-y-4">
 
           <h2 class="text-lg font-semibold">Slip Preview</h2>
@@ -102,15 +134,17 @@
           <div
             class="flex items-center justify-center p-4 bg-gray-50 border rounded-xl min-h-[300px]"
           >
+
             <img
-  v-if="payment.slipImageUrl"
-  :src="payment.slipImageUrl"
-  class="object-contain max-h-[400px] rounded-lg shadow"
-/>
+              v-if="payment.slipImageUrl"
+              :src="payment.slipImageUrl"
+              class="object-contain max-h-[400px] rounded-lg shadow"
+            />
 
             <div v-else class="text-gray-400">
               No slip uploaded
             </div>
+
           </div>
 
         </div>
@@ -119,9 +153,10 @@
 
       <!-- ACTION BUTTONS -->
       <div
-        v-if="payment && payment.status === 'VERIFIED'"
+        v-if="payment && (payment.status === 'VERIFIED' || payment.status === 'REJECTED')"
         class="flex justify-end gap-4 mt-8"
       >
+
         <button
           @click="rejectPayment"
           class="px-6 py-2 text-white transition bg-red-500 rounded-xl hover:bg-red-600"
@@ -135,6 +170,7 @@
         >
           Approve Payment
         </button>
+
       </div>
 
     </div>
@@ -142,9 +178,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import api from '@/services/api'
+
+import { ref, onMounted } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import api from "@/services/api"
 
 const route = useRoute()
 const router = useRouter()
@@ -154,64 +191,109 @@ const paymentId = Number(route.params.paymentId)
 const payment = ref<any>(null)
 const loading = ref(true)
 
-/* ================= FETCH PAYMENT ================= */
+/* FETCH PAYMENT */
 const fetchPayment = async () => {
+
   try {
+
     const { data } = await api.get(`/payments/${paymentId}`)
+
     payment.value = data
+
   } catch (err) {
-    console.error('Fetch payment error:', err)
+
+    console.error("Fetch payment error:", err)
+
   } finally {
+
     loading.value = false
+
   }
+
 }
 
-/* ================= CONFIRM ================= */
+/* APPROVE PAYMENT */
 const confirmPayment = async () => {
+
   try {
+
     await api.patch(`/payments/${paymentId}/confirm`)
-    alert('Payment confirmed')
-    router.push({ name: 'OwnerPayments' })
-  } catch (err: any) {
-    console.error('Confirm error:', err)
-    alert(err?.response?.data?.message || 'Failed to confirm payment')
+
+    alert("Payment confirmed")
+
+    router.push({ name: "OwnerPayments" })
+
+  } catch (err:any) {
+
+    console.error("Confirm error:", err)
+
+    alert(err?.response?.data?.message || "Failed to confirm payment")
+
   }
+
 }
 
-/* ================= REJECT ================= */
+/* REJECT PAYMENT */
 const rejectPayment = async () => {
-  const reason = prompt('Enter rejection reason')
+
+  const reason = prompt("Enter rejection reason")
+
   if (!reason) return
 
   try {
-    await api.patch(`/payments/${paymentId}/reject`, { reason })
-    alert('Payment rejected')
-    router.push({ name: 'OwnerPayments' })
-  } catch (err: any) {
-    console.error('Reject error:', err)
-    alert(err?.response?.data?.message || 'Failed to reject payment')
+
+    await api.patch(`/payments/${paymentId}/reject`, {
+      reason
+    })
+
+    alert("Payment rejected")
+
+    router.push({ name: "OwnerPayments" })
+
+  } catch (err:any) {
+
+    console.error("Reject error:", err)
+
+    alert(err?.response?.data?.message || "Failed to reject payment")
+
   }
+
 }
 
-const formatDate = (date: string) =>
-  new Date(date).toLocaleDateString()
+/* FORMAT DATE */
+const formatDate = (date:string) => {
 
-const statusBadge = (status: string) => {
+  return new Date(date).toLocaleDateString("th-TH")
+
+}
+
+/* STATUS BADGE */
+const statusBadge = (status:string) => {
+
   switch (status) {
+
     case "PENDING":
       return "bg-gray-100 text-gray-700"
+
     case "VERIFYING":
       return "bg-blue-100 text-blue-700"
+
     case "VERIFIED":
       return "bg-yellow-100 text-yellow-800"
+
     case "CONFIRMED":
       return "bg-green-100 text-green-700"
+
     case "REJECTED":
       return "bg-red-100 text-red-700"
+
     default:
       return "bg-gray-100 text-gray-700"
+
   }
+
 }
 
 onMounted(fetchPayment)
+
 </script>
