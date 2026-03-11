@@ -133,26 +133,26 @@
               </td>
 
               <td class="td">
-                <router-link
-                  v-if="payment.status === 'VERIFIED'"
-                  :to="{
-                    name: 'ConfirmPayment',
-                    params: { paymentId: payment.id },
-                  }"
-                  class="px-3 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
-                >
-                  ตรวจสอบ & ยืนยัน
-                </router-link>
+  <router-link
+    v-if="['VERIFIED','REJECTED'].includes(payment.status)"
+    :to="{
+      name: 'ConfirmPayment',
+      params: { paymentId: payment.id },
+    }"
+    class="px-3 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+  >
+    🔍 ตรวจสอบ & ยืนยัน
+  </router-link>
 
-                <span
-                  v-else-if="payment.status === 'CONFIRMED'"
-                  class="font-semibold text-green-600"
-                >
-                  ยืนยันแล้ว
-                </span>
+  <span
+    v-else-if="payment.status === 'CONFIRMED'"
+    class="font-semibold text-green-600"
+  >
+    ยืนยันแล้ว
+  </span>
 
-                <span v-else class="text-gray-400">-</span>
-              </td>
+  <span v-else class="text-gray-400">-</span>
+</td>
             </tr>
           </tbody>
 
