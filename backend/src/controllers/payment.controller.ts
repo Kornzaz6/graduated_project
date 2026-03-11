@@ -9,8 +9,8 @@ import generatePayload from "promptpay-qr";
 import QRCode from "qrcode";
 import { decrypt } from "../utils/encryption";
 import { generatePromptPayQR } from "../utils/promptpay";
-import { supabase } from "../utils/supabase";
-import axios from "axios"
+import axios from "axios";
+import path from "path";
 /* =====================================================
    CREATE MONTHLY PAYMENT RECORD
 ===================================================== */
@@ -43,61 +43,47 @@ export const createMonthlyPayment = async (req: Request, res: Response) => {
 ===================================================== */
 export const uploadSlip = async (req: Request, res: Response) => {
   try {
-
-    const paymentId = Number(req.params.id)
+    const paymentId = Number(req.params.id);
 
     if (!req.file) {
       return res.status(400).json({
-        message: "Slip file required"
-      })
+        message: "Slip file required",
+      });
     }
 
-    const buffer = req.file.buffer
+    const buffer = req.file.buffer;
 
     /* ================= HASH ================= */
 
-    const imageHash = crypto
-      .createHash("sha256")
-      .update(buffer)
-      .digest("hex")
+    const imageHash = crypto.createHash("sha256").update(buffer).digest("hex");
 
     const duplicate = await prisma.payment.findFirst({
       where: {
         imageHash,
-        NOT: { id: paymentId }
-      }
-    })
+        NOT: { id: paymentId },
+      },
+    });
 
     if (duplicate) {
       return res.status(400).json({
-        message: "Duplicate slip detected"
-      })
+        message: "Duplicate slip detected",
+      });
     }
 
-    /* ================= UPLOAD TO SUPABASE ================= */
+    /* ================= SAVE FILE ================= */
 
-    const bucket = process.env.SUPABASE_BUCKET || "slips"
+    const uploadDir = path.join(__dirname, "../../uploads/slips");
 
-    const fileName = `slip-${paymentId}-${Date.now()}.jpg`
-
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      })
-
-    if (error) {
-      console.error("SUPABASE UPLOAD ERROR:", error)
-
-      return res.status(500).json({
-        message: "Upload failed"
-      })
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    /* ================= PUBLIC URL ================= */
+    const fileName = `slip-${paymentId}-${Date.now()}.jpg`;
+    const filePath = path.join(uploadDir, fileName);
 
-    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`
+    fs.writeFileSync(filePath, buffer);
+
+    const publicUrl = `/uploads/slips/${fileName}`;
 
     /* ================= UPDATE PAYMENT ================= */
 
@@ -106,36 +92,31 @@ export const uploadSlip = async (req: Request, res: Response) => {
       data: {
         slipImageUrl: publicUrl,
         imageHash,
-        status: "VERIFYING"
-      }
-    })
+        status: "VERIFYING",
+      },
+    });
 
     /* ================= START AI VERIFY ================= */
 
-    verifyPayment(paymentId).catch(console.error)
+    verifyPayment(paymentId).catch(console.error);
 
     res.json({
       message: "Slip uploaded successfully",
-      url: publicUrl
-    })
-
+      url: publicUrl,
+    });
   } catch (error) {
-
-    console.error("UPLOAD SLIP ERROR:", error)
+    console.error("UPLOAD SLIP ERROR:", error);
 
     res.status(500).json({
-      message: "Upload failed"
-    })
-
+      message: "Upload failed",
+    });
   }
-}
+};
 /* =====================================================
    VERIFY PAYMENT (QR + OCR)
 ===================================================== */
 async function verifyPayment(paymentId: number) {
-
   try {
-
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
@@ -144,93 +125,83 @@ async function verifyPayment(paymentId: number) {
             room: {
               include: {
                 dormitory: {
-                  include: { owner: true }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
+                  include: { owner: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (!payment || !payment.slipImageUrl) return
+    if (!payment || !payment.slipImageUrl) return;
 
-    const owner = payment.contract.room.dormitory.owner
+    const owner = payment.contract.room.dormitory.owner;
 
     /* ================= GET OWNER ACCOUNT ================= */
 
-    let ownerAccount: string | null = null
+    let ownerAccount: string | null = null;
 
     if (owner.paymentType === "PROMPTPAY" && owner.promptPayId) {
-      ownerAccount = decrypt(owner.promptPayId)
+      ownerAccount = decrypt(owner.promptPayId);
     }
 
     if (owner.paymentType === "BANK" && owner.bankAccountNo) {
-      ownerAccount = decrypt(owner.bankAccountNo)
+      ownerAccount = decrypt(owner.bankAccountNo);
     }
 
     /* ================= QR SCAN ================= */
 
-    let slipData = await tryDecodeQR(payment.slipImageUrl)
+    let slipData = await tryDecodeQR(payment.slipImageUrl);
 
     /* ================= OCR FALLBACK ================= */
 
     if (!slipData || slipData.amount == null) {
+      const text = await runOCR(payment.slipImageUrl);
 
-      const text = await runOCR(payment.slipImageUrl)
-
-      slipData = parseOCRText(text)
-
+      slipData = parseOCRText(text);
     }
 
     if (!slipData || slipData.amount == null) {
-      return rejectPayment(paymentId, "Cannot read slip amount")
+      return rejectPayment(paymentId, "Cannot read slip amount");
     }
 
     /* ================= AMOUNT CHECK ================= */
 
-    const expected = Number(payment.amount)
-    const received = Number(slipData.amount)
+    const expected = Number(payment.amount);
+    const received = Number(slipData.amount);
 
     if (Math.abs(expected - received) > 0.01) {
-      return rejectPayment(paymentId, "Amount mismatch")
+      return rejectPayment(paymentId, "Amount mismatch");
     }
 
     /* ================= DUPLICATE TRANSACTION ================= */
 
     if (slipData.transactionRef) {
-
       const duplicateRef = await prisma.payment.findFirst({
         where: {
-          transactionRef: slipData.transactionRef
-        }
-      })
+          transactionRef: slipData.transactionRef,
+        },
+      });
 
       if (duplicateRef) {
-        return rejectPayment(paymentId, "Duplicate transaction reference")
+        return rejectPayment(paymentId, "Duplicate transaction reference");
       }
-
     }
 
     /* ================= RECEIVER ACCOUNT CHECK ================= */
 
     if (ownerAccount && slipData.receiverAccount) {
-
-      const cleanOwner = String(ownerAccount).replace(/\D/g, "")
-      const cleanReceiver = String(slipData.receiverAccount).replace(/\D/g, "")
+      const cleanOwner = String(ownerAccount).replace(/\D/g, "");
+      const cleanReceiver = String(slipData.receiverAccount).replace(/\D/g, "");
 
       if (cleanOwner && cleanReceiver) {
-
-        const ownerTail = cleanOwner.slice(-6)
+        const ownerTail = cleanOwner.slice(-6);
 
         if (!cleanReceiver.includes(ownerTail)) {
-
-          return rejectPayment(paymentId, "Receiver account mismatch")
-
+          return rejectPayment(paymentId, "Receiver account mismatch");
         }
-
       }
-
     }
 
     /* ================= SUCCESS ================= */
@@ -241,50 +212,40 @@ async function verifyPayment(paymentId: number) {
         status: "VERIFIED",
         verifiedByAI: true,
         paidAt: new Date(),
-        transactionRef: slipData.transactionRef || null
-      }
-    })
-
+        transactionRef: slipData.transactionRef || null,
+      },
+    });
   } catch (error) {
+    console.error("VERIFY ERROR:", error);
 
-    console.error("VERIFY ERROR:", error)
-
-    await rejectPayment(paymentId, "Verification error")
-
+    await rejectPayment(paymentId, "Verification error");
   }
-
 }
 
 /* =====================================================
    QR DECODE
 ===================================================== */
 async function tryDecodeQR(imageUrl: string) {
-
   try {
-
-    const buffer = await loadImageBuffer(imageUrl)
+    const buffer = await loadImageBuffer(imageUrl);
 
     const image = await sharp(buffer)
       .raw()
       .ensureAlpha()
-      .toBuffer({ resolveWithObject: true })
+      .toBuffer({ resolveWithObject: true });
 
     const qr = jsQR(
       new Uint8ClampedArray(image.data),
       image.info.width,
-      image.info.height
-    )
+      image.info.height,
+    );
 
-    if (!qr) return null
+    if (!qr) return null;
 
-    return parseQRData(qr.data)
-
+    return parseQRData(qr.data);
   } catch {
-
-    return null
-
+    return null;
   }
-
 }
 
 //emv parser (สำหรับ PromptPay QR จะอยู่ในรูปแบบ EMV)
@@ -317,16 +278,11 @@ function parseQRData(data: string) {
    OCR FALLBACK
 ===================================================== */
 async function runOCR(imageUrl: string) {
+  const buffer = await loadImageBuffer(imageUrl);
 
-  const buffer = await loadImageBuffer(imageUrl)
+  const result = await Tesseract.recognize(buffer, "tha+eng");
 
-  const result = await Tesseract.recognize(
-    buffer,
-    "tha+eng"
-  )
-
-  return result.data.text
-
+  return result.data.text;
 }
 
 function parseOCRText(text: string) {
@@ -388,27 +344,29 @@ async function rejectPayment(paymentId: number, reason: string) {
 
     if (!payment) return
 
-    /* ================= DELETE FROM SUPABASE ================= */
+    /* ================= DELETE FILE ================= */
 
     if (payment.slipImageUrl) {
 
-      const bucket = process.env.SUPABASE_BUCKET || "slips"
-
       try {
 
-        const filePath = payment.slipImageUrl.split(`/object/public/${bucket}/`)[1]
+        const absolutePath = path.join(
+          __dirname,
+          "../../",
+          payment.slipImageUrl
+        )
 
-        if (filePath) {
+        if (fs.existsSync(absolutePath)) {
 
-          await supabase.storage
-            .from(bucket)
-            .remove([filePath])
+          fs.unlinkSync(absolutePath)
+
+          console.log("Slip deleted:", absolutePath)
 
         }
 
       } catch (err) {
 
-        console.error("SUPABASE DELETE ERROR:", err)
+        console.error("FILE DELETE ERROR:", err)
 
       }
 
@@ -852,12 +810,22 @@ export const getPaymentById = async (req: Request, res: Response) => {
   }
 };
 
-async function loadImageBuffer(url: string): Promise<Buffer> {
+async function loadImageBuffer(fileUrl: string): Promise<Buffer> {
+  try {
+    // fileUrl = /uploads/slips/slip-123.jpg
 
-  const response = await axios.get(url, {
-    responseType: "arraybuffer"
-  })
+    const absolutePath = path.join(__dirname, "../../", fileUrl);
 
-  return Buffer.from(response.data)
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error("Slip file not found");
+    }
 
+    const buffer = fs.readFileSync(absolutePath);
+
+    return buffer;
+  } catch (error) {
+    console.error("LOAD IMAGE ERROR:", error);
+
+    throw error;
+  }
 }

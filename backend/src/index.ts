@@ -1,6 +1,7 @@
 import "dotenv/config"
 import express from "express"
 import cors from "cors"
+import path from "path"
 
 import authRoutes from "./routes/auth"
 import userRoutes from "./routes/user"
@@ -20,6 +21,12 @@ app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true
 }))
+
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../uploads"))
+)
 
 app.use(express.json())
 
