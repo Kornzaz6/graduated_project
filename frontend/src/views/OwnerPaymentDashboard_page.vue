@@ -76,20 +76,25 @@
             </td>
 
             <td class="px-6 py-4">
-              <router-link
-                v-if="payment.status === 'VERIFIED' || payment.status === 'REJECTED'"
-                :to="{ name: 'confirmPayment', params: { paymentId: payment.id } }"
-                class="inline-block px-3 py-1 text-xs text-white transition bg-green-600 rounded hover:bg-green-700"
-              >
-                🔍 Review & Confirm
-              </router-link>
 
-              <span v-else-if="payment.status === 'CONFIRMED'" class="font-semibold text-green-600">
-                Confirmed
-              </span>
+  <router-link
+    v-if="['VERIFIED','REJECTED'].includes(payment.status)"
+    :to="{ name: 'confirmPayment', params: { paymentId: payment.id } }"
+    class="inline-block px-3 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+  >
+    🔍 Review & Confirm
+  </router-link>
 
-              <span v-else class="text-gray-400">-</span>
-            </td>
+  <span
+    v-else-if="payment.status === 'CONFIRMED'"
+    class="font-semibold text-green-600"
+  >
+    Confirmed
+  </span>
+
+  <span v-else class="text-gray-400">-</span>
+
+</td>
           </tr>
 
           <tr v-if="payments.length === 0">
