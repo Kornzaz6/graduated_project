@@ -1,4 +1,4 @@
-import supabase from "./supabase"
+import { supabase } from "./supabase"
 
 export const uploadImage = async (file: Express.Multer.File) => {
 

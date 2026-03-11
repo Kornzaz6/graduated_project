@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 import { RoomStatus } from "@prisma/client";
-import supabase from "../utils/supabase"
+import { supabase } from "../utils/supabase"
 
 export const createDormitory = async (req: Request, res: Response) => {
   try {
