@@ -74,10 +74,7 @@
               </span>
             </div>
 
-            <div
-              v-if="payment.transactionRef"
-              class="flex justify-between"
-            >
+            <div v-if="payment.transactionRef" class="flex justify-between">
               <span class="text-gray-500">Transaction Ref</span>
               <span class="font-medium">
                 {{ payment.transactionRef }}
@@ -132,14 +129,19 @@
           <h2 class="text-lg font-semibold">Slip Preview</h2>
 
           <div
-            class="flex items-center justify-center p-4 bg-gray-50 border rounded-xl min-h-[300px]"
+            class="flex items-center justify-center p-4 bg-gray-50 border rounded-xl min-h-[320px]"
           >
 
             <img
-              v-if="payment.slipImageUrl"
+              v-if="payment.slipImageUrl && !imageError"
               :src="payment.slipImageUrl"
-              class="object-contain max-h-[400px] rounded-lg shadow"
+              class="object-contain max-h-[420px] rounded-lg shadow"
+              @error="imageError = true"
             />
+
+            <div v-else-if="imageError" class="text-sm text-red-500">
+              Cannot load slip image
+            </div>
 
             <div v-else class="text-gray-400">
               No slip uploaded
@@ -190,6 +192,7 @@ const paymentId = Number(route.params.paymentId)
 
 const payment = ref<any>(null)
 const loading = ref(true)
+const imageError = ref(false)
 
 /* FETCH PAYMENT */
 const fetchPayment = async () => {
@@ -199,6 +202,8 @@ const fetchPayment = async () => {
     const { data } = await api.get(`/payments/${paymentId}`)
 
     payment.value = data
+
+    console.log("Payment data:", data)
 
   } catch (err) {
 
