@@ -1,38 +1,8 @@
 import multer from "multer"
-import path from "path"
-import fs from "fs"
-
-/* ================= UPLOAD PATH ================= */
-
-const uploadPath = path.resolve(process.cwd(), "uploads/slips")
-
-/* create folder if not exists */
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true })
-}
 
 /* ================= STORAGE ================= */
 
-const storage = multer.diskStorage({
-
-  destination: (_req, _file, cb) => {
-    cb(null, uploadPath)
-  },
-
-  filename: (_req, file, cb) => {
-
-    const timestamp = Date.now()
-    const random = Math.round(Math.random() * 1e9)
-
-    const ext = path.extname(file.originalname).toLowerCase()
-
-    const filename = `${timestamp}-${random}${ext}`
-
-    cb(null, filename)
-
-  }
-
-})
+const storage = multer.memoryStorage()
 
 /* ================= FILE FILTER ================= */
 
@@ -44,25 +14,13 @@ const fileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
     "image/jpg"
   ]
 
-  const allowedExtensions = [
-    ".jpg",
-    ".jpeg",
-    ".png"
-  ]
-
-  const ext = path.extname(file.originalname).toLowerCase()
-
-  /* MIME + EXT check */
-  if (
-    allowedMimeTypes.includes(file.mimetype) &&
-    allowedExtensions.includes(ext)
-  ) {
+  if (allowedMimeTypes.includes(file.mimetype)) {
 
     cb(null, true)
 
   } else {
 
-    cb(new Error("Only JPG and PNG image files are allowed"))
+    cb(new Error("Only JPG and PNG images are allowed"))
 
   }
 
@@ -77,7 +35,7 @@ export const uploadSlipMiddleware = multer({
   fileFilter,
 
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 5 * 1024 * 1024
   }
 
 })
@@ -102,9 +60,11 @@ export const handleUploadError = (
   }
 
   if (err) {
+
     return res.status(400).json({
       message: err.message
     })
+
   }
 
   next()
