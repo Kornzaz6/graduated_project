@@ -91,7 +91,6 @@ export const uploadSlip = async (req: Request, res: Response) => {
 ===================================================== */
 async function verifyPayment(paymentId: number) {
   try {
-
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
@@ -100,53 +99,49 @@ async function verifyPayment(paymentId: number) {
             room: {
               include: {
                 dormitory: {
-                  include: { owner: true }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
+                  include: { owner: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (!payment || !payment.slipImageUrl) return
+    if (!payment || !payment.slipImageUrl) return;
 
-    const owner = payment.contract.room.dormitory.owner
+    const owner = payment.contract.room.dormitory.owner;
 
     /* ================= GET OWNER ACCOUNT ================= */
 
-    let ownerAccount: string | null = null
+    let ownerAccount: string | null = null;
 
     if (owner.paymentType === "PROMPTPAY" && owner.promptPayId) {
-      ownerAccount = decrypt(owner.promptPayId)
+      ownerAccount = decrypt(owner.promptPayId);
     }
 
     if (owner.paymentType === "BANK" && owner.bankAccountNo) {
-      ownerAccount = decrypt(owner.bankAccountNo)
+      ownerAccount = decrypt(owner.bankAccountNo);
     }
 
     /* ================= READ SLIP ================= */
 
-    let slipData = await tryDecodeQR(payment.slipImageUrl)
+    let slipData = await tryDecodeQR(payment.slipImageUrl);
 
     /* ========= OCR fallback ========= */
 
     if (!slipData || slipData.amount == null) {
+      const text = await runOCR(payment.slipImageUrl);
 
-      const text = await runOCR(payment.slipImageUrl)
-
-      slipData = parseOCRText(text)
-
+      slipData = parseOCRText(text);
     }
 
     if (!slipData || slipData.amount == null) {
-
-      return rejectPayment(paymentId, "Cannot read slip amount")
-
+      return rejectPayment(paymentId, "Cannot read slip amount");
     }
 
-    console.log("Expected amount:", payment.amount)
-    console.log("Slip amount:", slipData.amount)
+    console.log("Expected amount:", payment.amount);
+    console.log("Slip amount:", slipData.amount);
 
     /* ================= AMOUNT CHECK ================= */
 
@@ -154,50 +149,34 @@ async function verifyPayment(paymentId: number) {
       slipData.amount == null ||
       Math.abs(Number(slipData.amount) - Number(payment.amount)) > 0.01
     ) {
-
-      return rejectPayment(paymentId, "Amount mismatch")
-
+      return rejectPayment(paymentId, "Amount mismatch");
     }
 
     /* ================= RECEIVER ACCOUNT CHECK ================= */
 
     if (ownerAccount && slipData.receiverAccount) {
+      const cleanOwner = String(ownerAccount).replace(/\D/g, "");
+      const cleanReceiver = String(slipData.receiverAccount).replace(/\D/g, "");
 
-      const cleanOwner = ownerAccount.replace(/\D/g, "")
-      const cleanReceiver = slipData.receiverAccount.replace(/\D/g, "")
+      if (!cleanReceiver) return;
 
-      console.log("Owner Account:", cleanOwner)
-      console.log("Slip Receiver:", cleanReceiver)
-
-      /* compare last digits (masked slip safe) */
-
-      const ownerTail = cleanOwner.slice(-6)
+      const ownerTail = cleanOwner.slice(-6);
 
       if (!cleanReceiver.includes(ownerTail)) {
-
-        return rejectPayment(paymentId, "Receiver account mismatch")
-
+        return rejectPayment(paymentId, "Receiver account mismatch");
       }
-
     }
 
     /* ================= DUPLICATE TRANSACTION ================= */
 
     if (slipData.transactionRef) {
-
       const duplicateRef = await prisma.payment.findFirst({
-        where: { transactionRef: slipData.transactionRef }
-      })
+        where: { transactionRef: slipData.transactionRef },
+      });
 
       if (duplicateRef) {
-
-        return rejectPayment(
-          paymentId,
-          "Duplicate transaction reference"
-        )
-
+        return rejectPayment(paymentId, "Duplicate transaction reference");
       }
-
     }
 
     /* ================= SUCCESS ================= */
@@ -208,21 +187,15 @@ async function verifyPayment(paymentId: number) {
         status: "VERIFIED",
         verifiedByAI: true,
         paidAt: new Date(),
-        transactionRef: slipData.transactionRef || null
-      }
-    })
+        transactionRef: slipData.transactionRef || null,
+      },
+    });
 
-    console.log("Payment verified:", paymentId)
-
+    console.log("Payment verified:", paymentId);
   } catch (error) {
+    console.error("VERIFY ERROR:", error);
 
-    console.error("VERIFY ERROR:", error)
-
-    await rejectPayment(
-      paymentId,
-      "Verification error"
-    )
-
+    await rejectPayment(paymentId, "Verification error");
   }
 }
 
