@@ -134,7 +134,7 @@
 
               <td class="td">
   <router-link
-    v-if="['VERIFIED','REJECTED'].includes(payment.status)"
+    v-if="['VERIFIED','PENDING','REJECTED'].includes(payment.status)"
     :to="{
       name: 'ConfirmPayment',
       params: { paymentId: payment.id },
@@ -144,15 +144,15 @@
     🔍 ตรวจสอบ & ยืนยัน
   </router-link>
 
-  <span
-    v-else-if="payment.status === 'CONFIRMED'"
-    class="font-semibold text-green-600"
-  >
-    ยืนยันแล้ว
-  </span>
+                <span
+                  v-else-if="payment.status === 'CONFIRMED'"
+                  class="font-semibold text-green-600"
+                >
+                  ยืนยันแล้ว
+                </span>
 
-  <span v-else class="text-gray-400">-</span>
-</td>
+                <span v-else class="text-gray-400">-</span>
+              </td>
             </tr>
           </tbody>
 
@@ -185,15 +185,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue"
-import api from "@/services/api"
+import { ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
-const currentUser = JSON.parse(localStorage.getItem("user") || "null")
+const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
 
 /* ================= STATE ================= */
 
 const contracts = ref<any[]>([])
-const selectedContractId = ref("")
+const selectedContractId = ref('')
 const payments = ref<any[]>([])
 
 const totalIncome = ref(0)
@@ -207,20 +207,20 @@ const occupancyRate = ref(0)
 const upcomingPayments = ref<any[]>([])
 
 const billForm = ref({
-  billingMonth: "",
-  amount: "",
-  dueDate: "",
+  billingMonth: '',
+  amount: '',
+  dueDate: '',
 })
 
-const customAmount = ref("")
+const customAmount = ref('')
 const showQR = ref(false)
-const qrImage = ref("")
+const qrImage = ref('')
 const qrAmount = ref(0)
 
 /* ================= AUTH ================= */
 
 const getAuthHeaders = (): Record<string, string> => {
-  const token = localStorage.getItem("token")
+  const token = localStorage.getItem('token')
 
   const headers: Record<string, string> = {}
 
@@ -235,159 +235,121 @@ const getAuthHeaders = (): Record<string, string> => {
 
 const fetchContracts = async () => {
   try {
-
-    const res = await api.get(
-      `/lease/owner/${currentUser.id}`,
-      { headers: getAuthHeaders() }
-    )
+    const res = await api.get(`/lease/owner/${currentUser.id}`, { headers: getAuthHeaders() })
 
     contracts.value = res.data
 
     calculateRooms()
-
   } catch (error: any) {
-
-    console.error("Fetch contracts error:", error)
-
+    console.error('Fetch contracts error:', error)
   }
 }
 
 /* ================= ROOM SUMMARY ================= */
 
 const calculateRooms = () => {
-
   totalRooms.value = contracts.value.length
 
-  occupiedRooms.value = contracts.value.filter(
-    (c:any) => c.status === "ACTIVE"
-  ).length
+  occupiedRooms.value = contracts.value.filter((c: any) => c.status === 'ACTIVE').length
 
   occupancyRate.value = totalRooms.value
     ? Math.round((occupiedRooms.value / totalRooms.value) * 100)
     : 0
-
 }
 
 /* ================= FETCH PAYMENTS ================= */
 
 const fetchPayments = async () => {
-
   if (!selectedContractId.value) return
 
   try {
-
-    const res = await api.get(
-      `/payments/contract/${selectedContractId.value}`,
-      { headers: getAuthHeaders() }
-    )
+    const res = await api.get(`/payments/contract/${selectedContractId.value}`, {
+      headers: getAuthHeaders(),
+    })
 
     payments.value = res.data
 
     calculateSummary()
-
   } catch (error) {
-
-    console.error("Fetch payments error:", error)
-
+    console.error('Fetch payments error:', error)
   }
 }
 
 /* ================= SUMMARY ================= */
 
 const calculateSummary = () => {
-
   totalIncome.value = payments.value
-    .filter((p:any) => p.status === "CONFIRMED")
-    .reduce((sum:number, p:any) => sum + Number(p.amount), 0)
+    .filter((p: any) => p.status === 'CONFIRMED')
+    .reduce((sum: number, p: any) => sum + Number(p.amount), 0)
 
-  pendingCount.value = payments.value.filter(
-    (p:any) => p.status === "PENDING"
-  ).length
+  pendingCount.value = payments.value.filter((p: any) => p.status === 'PENDING').length
 
-  confirmedCount.value = payments.value.filter(
-    (p:any) => p.status === "CONFIRMED"
-  ).length
+  confirmedCount.value = payments.value.filter((p: any) => p.status === 'CONFIRMED').length
 
   /* ================= UPCOMING BILLS ================= */
 
   const now = new Date()
 
-  upcomingPayments.value = payments.value.filter((p:any) => {
-
+  upcomingPayments.value = payments.value.filter((p: any) => {
     const due = new Date(p.dueDate)
 
-    const diff =
-      (due.getTime() - now.getTime()) /
-      (1000 * 60 * 60 * 24)
+    const diff = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
 
-    return diff <= 7 && p.status === "PENDING"
-
+    return diff <= 7 && p.status === 'PENDING'
   })
-
 }
 
 /* ================= CREATE BILL ================= */
 
 const createBill = async () => {
-
   if (!selectedContractId.value) return
 
   try {
-
     await api.post(
       `/payments/owner/create`,
       {
         contractId: selectedContractId.value,
-        ...billForm.value
+        ...billForm.value,
       },
       {
         headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders()
-        }
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
       }
     )
 
     /* reset form */
 
     billForm.value = {
-      billingMonth: "",
-      amount: "",
-      dueDate: ""
+      billingMonth: '',
+      amount: '',
+      dueDate: '',
     }
 
     fetchPayments()
+  } catch (error: any) {
+    console.error('Create bill error:', error)
 
-  } catch (error:any) {
-
-    console.error("Create bill error:", error)
-
-    alert(
-      error.response?.data?.message ||
-      "Failed to create bill"
-    )
-
+    alert(error.response?.data?.message || 'Failed to create bill')
   }
-
 }
 
 /* ================= GENERATE CUSTOM QR ================= */
 
 const generateCustomQR = async () => {
-
   try {
-
     const res = await api.post(
       `/payments/owner/generate-qr`,
       {
         ownerId: currentUser.id,
-        amount: customAmount.value
+        amount: customAmount.value,
       },
       {
         headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders()
-        }
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
       }
     )
 
@@ -395,84 +357,58 @@ const generateCustomQR = async () => {
     qrAmount.value = res.data.amount
 
     showQR.value = true
+  } catch (error: any) {
+    console.error('QR error:', error)
 
-  } catch (error:any) {
-
-    console.error("QR error:", error)
-
-    alert(
-      error.response?.data?.message ||
-      "Failed to generate QR"
-    )
-
+    alert(error.response?.data?.message || 'Failed to generate QR')
   }
-
 }
 
 /* ================= CLOSE QR ================= */
 
 const closeQR = () => {
-
   showQR.value = false
-  qrImage.value = ""
-
+  qrImage.value = ''
 }
 
 /* ================= UTIL ================= */
 
-const formatMonth = (date:string) => {
-
-  return new Date(date).toLocaleDateString(
-    "th-TH",
-    {
-      month: "long",
-      year: "numeric"
-    }
-  )
-
+const formatMonth = (date: string) => {
+  return new Date(date).toLocaleDateString('th-TH', {
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
-const formatDate = (date:string) => {
-
+const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString()
-
 }
 
-const statusColor = (status:string) => {
-
+const statusColor = (status: string) => {
   switch (status) {
+    case 'PENDING':
+      return 'px-2 py-1 text-xs bg-gray-100 rounded'
 
-    case "PENDING":
-      return "px-2 py-1 text-xs bg-gray-100 rounded"
+    case 'CONFIRMED':
+      return 'px-2 py-1 text-xs text-white bg-green-600 rounded'
 
-    case "CONFIRMED":
-      return "px-2 py-1 text-xs text-white bg-green-600 rounded"
-
-    case "VERIFIED":
-      return "px-2 py-1 text-xs text-white bg-blue-600 rounded"
+    case 'VERIFIED':
+      return 'px-2 py-1 text-xs text-white bg-blue-600 rounded'
 
     default:
-      return "px-2 py-1 text-xs bg-yellow-100 rounded"
-
+      return 'px-2 py-1 text-xs bg-yellow-100 rounded'
   }
-
 }
 
 /* ================= WATCH ================= */
 
-watch(
-  selectedContractId,
-  fetchPayments
-)
+watch(selectedContractId, fetchPayments)
 
 /* ================= INIT ================= */
 
 onMounted(() => {
-
   fetchContracts()
-
 })
-
 </script>
 
 <style scoped>
