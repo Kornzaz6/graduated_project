@@ -76,7 +76,7 @@ router.get(
 
 /* Get payment detail */
 router.get(
-  "/detail/:id",
+  "/:id",
   authMiddleware,
   getPaymentById
 )
