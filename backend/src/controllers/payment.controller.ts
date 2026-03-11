@@ -4,13 +4,13 @@ import sharp from "sharp";
 import jsQR from "jsqr";
 import Tesseract from "tesseract.js";
 import crypto from "crypto";
-import fs from "fs";
 import generatePayload from "promptpay-qr";
 import QRCode from "qrcode";
 import { decrypt } from "../utils/encryption";
 import { generatePromptPayQR } from "../utils/promptpay";
 import axios from "axios";
-import path from "path";
+import { supabase } from "../utils/supabase"
+
 /* =====================================================
    CREATE MONTHLY PAYMENT RECORD
 ===================================================== */
@@ -43,47 +43,64 @@ export const createMonthlyPayment = async (req: Request, res: Response) => {
 ===================================================== */
 export const uploadSlip = async (req: Request, res: Response) => {
   try {
-    const paymentId = Number(req.params.id);
+
+    const paymentId = Number(req.params.id)
 
     if (!req.file) {
       return res.status(400).json({
-        message: "Slip file required",
-      });
+        message: "Slip file required"
+      })
     }
 
-    const buffer = req.file.buffer;
+    const buffer = req.file.buffer
 
     /* ================= HASH ================= */
 
-    const imageHash = crypto.createHash("sha256").update(buffer).digest("hex");
+    const imageHash = crypto
+      .createHash("sha256")
+      .update(buffer)
+      .digest("hex")
 
     const duplicate = await prisma.payment.findFirst({
       where: {
         imageHash,
-        NOT: { id: paymentId },
-      },
-    });
+        NOT: { id: paymentId }
+      }
+    })
 
     if (duplicate) {
       return res.status(400).json({
-        message: "Duplicate slip detected",
-      });
+        message: "Duplicate slip detected"
+      })
     }
 
-    /* ================= SAVE FILE ================= */
+    /* ================= UPLOAD TO SUPABASE ================= */
 
-    const uploadDir = path.join(__dirname, "../../uploads/slips");
+    const bucket = process.env.SUPABASE_BUCKET || "dormitories"
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    const fileName = `slips/slip-${paymentId}-${Date.now()}.jpg`
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      })
+
+    if (error) {
+
+      console.error("SUPABASE UPLOAD ERROR:", error)
+
+      return res.status(500).json({
+        message: "Upload failed"
+      })
+
     }
 
-    const fileName = `slip-${paymentId}-${Date.now()}.jpg`;
-    const filePath = path.join(uploadDir, fileName);
+    /* ================= PUBLIC URL ================= */
 
-    fs.writeFileSync(filePath, buffer);
-
-    const publicUrl = `/uploads/slips/${fileName}`;
+    const publicUrl =
+`${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`
 
     /* ================= UPDATE PAYMENT ================= */
 
@@ -92,24 +109,27 @@ export const uploadSlip = async (req: Request, res: Response) => {
       data: {
         slipImageUrl: publicUrl,
         imageHash,
-        status: "VERIFYING",
-      },
-    });
+        status: "VERIFYING"
+      }
+    })
 
     /* ================= START AI VERIFY ================= */
 
-    verifyPayment(paymentId).catch(console.error);
+    verifyPayment(paymentId).catch(console.error)
 
     res.json({
       message: "Slip uploaded successfully",
-      url: publicUrl,
-    });
+      url: publicUrl
+    })
+
   } catch (error) {
-    console.error("UPLOAD SLIP ERROR:", error);
+
+    console.error("UPLOAD SLIP ERROR:", error)
 
     res.status(500).json({
-      message: "Upload failed",
-    });
+      message: "Upload failed"
+    })
+
   }
 };
 /* =====================================================
@@ -343,36 +363,6 @@ async function rejectPayment(paymentId: number, reason: string) {
     })
 
     if (!payment) return
-
-    /* ================= DELETE FILE ================= */
-
-    if (payment.slipImageUrl) {
-
-      try {
-
-        const absolutePath = path.join(
-          __dirname,
-          "../../",
-          payment.slipImageUrl
-        )
-
-        if (fs.existsSync(absolutePath)) {
-
-          fs.unlinkSync(absolutePath)
-
-          console.log("Slip deleted:", absolutePath)
-
-        }
-
-      } catch (err) {
-
-        console.error("FILE DELETE ERROR:", err)
-
-      }
-
-    }
-
-    /* ================= UPDATE PAYMENT ================= */
 
     await prisma.payment.update({
       where: { id: paymentId },
@@ -810,22 +800,12 @@ export const getPaymentById = async (req: Request, res: Response) => {
   }
 };
 
-async function loadImageBuffer(fileUrl: string): Promise<Buffer> {
-  try {
-    // fileUrl = /uploads/slips/slip-123.jpg
+async function loadImageBuffer(url: string): Promise<Buffer> {
 
-    const absolutePath = path.join(__dirname, "../../", fileUrl);
+  const response = await axios.get(url, {
+    responseType: "arraybuffer"
+  })
 
-    if (!fs.existsSync(absolutePath)) {
-      throw new Error("Slip file not found");
-    }
+  return Buffer.from(response.data)
 
-    const buffer = fs.readFileSync(absolutePath);
-
-    return buffer;
-  } catch (error) {
-    console.error("LOAD IMAGE ERROR:", error);
-
-    throw error;
-  }
 }
