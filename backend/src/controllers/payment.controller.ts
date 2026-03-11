@@ -158,7 +158,7 @@ async function verifyPayment(paymentId: number) {
 
     const owner = payment.contract.room.dormitory.owner;
 
-    /* ================= GET OWNER ACCOUNT ================= */
+    /* ================= OWNER ACCOUNT ================= */
 
     let ownerAccount: string | null = null;
 
@@ -178,12 +178,20 @@ async function verifyPayment(paymentId: number) {
 
     if (!slipData || slipData.amount == null) {
       const text = await runOCR(payment.slipImageUrl);
-
       slipData = parseOCRText(text);
     }
 
+    /* ================= CANNOT READ ================= */
+
     if (!slipData || slipData.amount == null) {
-      return rejectPayment(paymentId, "Cannot read slip amount");
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: "PENDING",
+          verificationNote: "AI flagged: Cannot read slip amount",
+        },
+      });
+      return;
     }
 
     /* ================= AMOUNT CHECK ================= */
@@ -192,10 +200,17 @@ async function verifyPayment(paymentId: number) {
     const received = Number(slipData.amount);
 
     if (Math.abs(expected - received) > 0.01) {
-      return rejectPayment(paymentId, "Amount mismatch");
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: "PENDING",
+          verificationNote: "AI flagged: Amount mismatch",
+        },
+      });
+      return;
     }
 
-    /* ================= DUPLICATE TRANSACTION ================= */
+    /* ================= DUPLICATE REF ================= */
 
     if (slipData.transactionRef) {
       const duplicateRef = await prisma.payment.findFirst({
@@ -205,7 +220,14 @@ async function verifyPayment(paymentId: number) {
       });
 
       if (duplicateRef) {
-        return rejectPayment(paymentId, "Duplicate transaction reference");
+        await prisma.payment.update({
+          where: { id: paymentId },
+          data: {
+            status: "PENDING",
+            verificationNote: "AI flagged: Duplicate transaction reference",
+          },
+        });
+        return;
       }
     }
 
@@ -219,7 +241,14 @@ async function verifyPayment(paymentId: number) {
         const ownerTail = cleanOwner.slice(-6);
 
         if (!cleanReceiver.includes(ownerTail)) {
-          return rejectPayment(paymentId, "Receiver account mismatch");
+          await prisma.payment.update({
+            where: { id: paymentId },
+            data: {
+              status: "PENDING",
+              verificationNote: "AI flagged: Receiver account mismatch",
+            },
+          });
+          return;
         }
       }
     }
@@ -233,12 +262,22 @@ async function verifyPayment(paymentId: number) {
         verifiedByAI: true,
         paidAt: new Date(),
         transactionRef: slipData.transactionRef || null,
+        verificationNote: "AI verified successfully",
       },
     });
+
   } catch (error) {
+
     console.error("VERIFY ERROR:", error);
 
-    await rejectPayment(paymentId, "Verification error");
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: "PENDING",
+        verificationNote: "AI verification error",
+      },
+    });
+
   }
 }
 
@@ -354,30 +393,43 @@ function extractAccount(text: string) {
 /* =====================================================
    REJECT PAYMENT
 ===================================================== */
-async function rejectPayment(paymentId: number, reason: string) {
-
+export const rejectPayment = async (req: Request, res: Response) => {
   try {
+
+    const paymentId = Number(req.params.id)
+    const { reason } = req.body
 
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId }
     })
 
-    if (!payment) return
+    if (!payment) {
+      return res.status(404).json({
+        message: "Payment not found"
+      })
+    }
 
     await prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: "REJECTED",
-        verificationNote: reason
+        verificationNote: reason || "Rejected by owner"
       }
+    })
+
+    res.json({
+      message: "Payment rejected"
     })
 
   } catch (error) {
 
-    console.error("REJECT PAYMENT ERROR:", error)
+    console.error(error)
+
+    res.status(500).json({
+      message: "Reject failed"
+    })
 
   }
-
 }
 
 /* =====================================================
@@ -385,16 +437,23 @@ async function rejectPayment(paymentId: number, reason: string) {
 ===================================================== */
 export const confirmPayment = async (req: Request, res: Response) => {
   try {
-    const paymentId = Number(req.params.id);
+
+    const paymentId = Number(req.params.id)
 
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-    });
+    })
 
-    if (!payment || payment.status !== "VERIFIED") {
+    if (!payment) {
+      return res.status(404).json({
+        message: "Payment not found",
+      })
+    }
+
+    if (payment.status === "CONFIRMED") {
       return res.status(400).json({
-        message: "Payment not ready for confirmation",
-      });
+        message: "Payment already confirmed",
+      })
     }
 
     await prisma.payment.update({
@@ -404,14 +463,22 @@ export const confirmPayment = async (req: Request, res: Response) => {
         confirmedByOwner: true,
         ownerConfirmAt: new Date(),
       },
-    });
+    })
 
-    res.json({ message: "Payment confirmed successfully" });
+    res.json({
+      message: "Payment confirmed successfully",
+    })
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Confirm failed" });
+
+    console.error(error)
+
+    res.status(500).json({
+      message: "Confirm failed",
+    })
+
   }
-};
+}
 
 /* =====================================================
    GET PAYMENTS BY CONTRACT

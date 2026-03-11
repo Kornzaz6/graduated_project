@@ -3,6 +3,7 @@ import { Router } from "express"
 import {
   uploadSlip,
   confirmPayment,
+  rejectPayment,
   getPaymentsByContract,
   generatePaymentQR,
   ownerCreatePayment,
@@ -20,7 +21,6 @@ const router = Router()
    MEMBER ROUTES
 ===================================================== */
 
-/* Upload payment slip */
 router.post(
   "/:id/upload-slip",
   authMiddleware,
@@ -28,14 +28,12 @@ router.post(
   uploadSlip
 )
 
-/* Generate payment QR */
 router.get(
   "/contract/:contractId/qr",
   authMiddleware,
   generatePaymentQR
 )
 
-/* Get contract payments */
 router.get(
   "/contract/:contractId",
   authMiddleware,
@@ -46,35 +44,36 @@ router.get(
    OWNER ROUTES
 ===================================================== */
 
-/* Create monthly payment bill */
 router.post(
   "/owner/create",
   authMiddleware,
   ownerCreatePayment
 )
 
-/* Generate custom QR (manual payment) */
 router.post(
   "/owner/generate-qr",
   authMiddleware,
   ownerGenerateCustomQR
 )
 
-/* Confirm payment */
 router.patch(
   "/:id/confirm",
   authMiddleware,
   confirmPayment
 )
 
-/* Get all owner payments */
+router.patch(
+  "/:id/reject",
+  authMiddleware,
+  rejectPayment
+)
+
 router.get(
   "/owner/payments",
   authMiddleware,
   getPaymentsByOwner
 )
 
-/* Get payment detail */
 router.get(
   "/:id",
   authMiddleware,
