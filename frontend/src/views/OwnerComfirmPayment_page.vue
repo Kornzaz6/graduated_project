@@ -103,10 +103,10 @@
             class="flex items-center justify-center p-4 bg-gray-50 border rounded-xl min-h-[300px]"
           >
             <img
-              v-if="payment.slipImageUrl"
-              :src="`http://localhost:5000/${payment.slipImageUrl}`"
-              class="object-contain max-h-[400px] rounded-lg shadow"
-            />
+  v-if="payment.slipImageUrl"
+  :src="payment.slipImageUrl"
+  class="object-contain max-h-[400px] rounded-lg shadow"
+/>
 
             <div v-else class="text-gray-400">
               No slip uploaded
