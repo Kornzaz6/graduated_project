@@ -1,4 +1,5 @@
 import { Router } from "express"
+
 import {
   uploadSlip,
   confirmPayment,
@@ -10,7 +11,7 @@ import {
   getPaymentById
 } from "../controllers/payment.controller"
 
-import { uploadSlipMiddleware } from "../middleware/upload"   // ✅ แก้ตรงนี้
+import { uploadSlipMiddleware } from "../middleware/upload"
 import { authMiddleware } from "../middleware/auth"
 
 const router = Router()
@@ -19,22 +20,22 @@ const router = Router()
    MEMBER ROUTES
 ===================================================== */
 
-// Upload slip
+/* Upload payment slip */
 router.post(
   "/:id/upload-slip",
   authMiddleware,
-  uploadSlipMiddleware.single("slip"),   // ✅ ใช้ upload จาก upload.ts
+  uploadSlipMiddleware.single("slip"),
   uploadSlip
 )
 
-// Generate QR for contract
+/* Generate payment QR */
 router.get(
   "/contract/:contractId/qr",
   authMiddleware,
   generatePaymentQR
 )
 
-// Get payments by contract
+/* Get contract payments */
 router.get(
   "/contract/:contractId",
   authMiddleware,
@@ -45,37 +46,37 @@ router.get(
    OWNER ROUTES
 ===================================================== */
 
-// Owner create monthly payment
+/* Create monthly payment bill */
 router.post(
   "/owner/create",
   authMiddleware,
   ownerCreatePayment
 )
 
-// Owner generate custom QR
+/* Generate custom QR (manual payment) */
 router.post(
   "/owner/generate-qr",
   authMiddleware,
   ownerGenerateCustomQR
 )
 
-// Owner confirm payment
+/* Confirm payment */
 router.patch(
   "/:id/confirm",
   authMiddleware,
   confirmPayment
 )
 
-// Owner view all payments of their dormitories
+/* Get all owner payments */
 router.get(
-  "/owner",
+  "/owner/payments",
   authMiddleware,
   getPaymentsByOwner
 )
 
-// Get payment by id (for owner confirm page)
+/* Get payment detail */
 router.get(
-  "/:id",
+  "/detail/:id",
   authMiddleware,
   getPaymentById
 )

@@ -9,7 +9,8 @@ import generatePayload from "promptpay-qr";
 import QRCode from "qrcode";
 import { decrypt } from "../utils/encryption";
 import { generatePromptPayQR } from "../utils/promptpay";
-
+import { supabase } from "../utils/supabase";
+import axios from "axios"
 /* =====================================================
    CREATE MONTHLY PAYMENT RECORD
 ===================================================== */
@@ -42,55 +43,99 @@ export const createMonthlyPayment = async (req: Request, res: Response) => {
 ===================================================== */
 export const uploadSlip = async (req: Request, res: Response) => {
   try {
-    const paymentId = Number(req.params.id);
+
+    const paymentId = Number(req.params.id)
 
     if (!req.file) {
-      return res.status(400).json({ message: "Slip file required" });
+      return res.status(400).json({
+        message: "Slip file required"
+      })
     }
 
-    const filePath = req.file.path;
-    const buffer = fs.readFileSync(filePath);
+    const buffer = req.file.buffer
 
-    const imageHash = crypto.createHash("sha256").update(buffer).digest("hex");
+    /* ================= HASH ================= */
+
+    const imageHash = crypto
+      .createHash("sha256")
+      .update(buffer)
+      .digest("hex")
 
     const duplicate = await prisma.payment.findFirst({
       where: {
         imageHash,
-        NOT: { id: paymentId },
-      },
-    });
+        NOT: { id: paymentId }
+      }
+    })
 
     if (duplicate) {
-      fs.unlinkSync(filePath);
       return res.status(400).json({
-        message: "Duplicate slip image detected",
-      });
+        message: "Duplicate slip detected"
+      })
     }
+
+    /* ================= UPLOAD TO SUPABASE ================= */
+
+    const bucket = process.env.SUPABASE_BUCKET || "slips"
+
+    const fileName = `slip-${paymentId}-${Date.now()}.jpg`
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      })
+
+    if (error) {
+      console.error("SUPABASE UPLOAD ERROR:", error)
+
+      return res.status(500).json({
+        message: "Upload failed"
+      })
+    }
+
+    /* ================= PUBLIC URL ================= */
+
+    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`
+
+    /* ================= UPDATE PAYMENT ================= */
 
     await prisma.payment.update({
       where: { id: paymentId },
       data: {
-        slipImageUrl: filePath,
+        slipImageUrl: publicUrl,
         imageHash,
-        status: "VERIFYING",
-      },
-    });
+        status: "VERIFYING"
+      }
+    })
 
-    // 🔥 async verify
-    verifyPayment(paymentId).catch(console.error);
+    /* ================= START AI VERIFY ================= */
 
-    res.json({ message: "Slip uploaded. Verification started." });
+    verifyPayment(paymentId).catch(console.error)
+
+    res.json({
+      message: "Slip uploaded successfully",
+      url: publicUrl
+    })
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Upload failed" });
-  }
-};
 
+    console.error("UPLOAD SLIP ERROR:", error)
+
+    res.status(500).json({
+      message: "Upload failed"
+    })
+
+  }
+}
 /* =====================================================
    VERIFY PAYMENT (QR + OCR)
 ===================================================== */
 async function verifyPayment(paymentId: number) {
+
   try {
+
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
@@ -99,84 +144,93 @@ async function verifyPayment(paymentId: number) {
             room: {
               include: {
                 dormitory: {
-                  include: { owner: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+                  include: { owner: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
 
-    if (!payment || !payment.slipImageUrl) return;
+    if (!payment || !payment.slipImageUrl) return
 
-    const owner = payment.contract.room.dormitory.owner;
+    const owner = payment.contract.room.dormitory.owner
 
     /* ================= GET OWNER ACCOUNT ================= */
 
-    let ownerAccount: string | null = null;
+    let ownerAccount: string | null = null
 
     if (owner.paymentType === "PROMPTPAY" && owner.promptPayId) {
-      ownerAccount = decrypt(owner.promptPayId);
+      ownerAccount = decrypt(owner.promptPayId)
     }
 
     if (owner.paymentType === "BANK" && owner.bankAccountNo) {
-      ownerAccount = decrypt(owner.bankAccountNo);
+      ownerAccount = decrypt(owner.bankAccountNo)
     }
 
-    /* ================= READ SLIP ================= */
+    /* ================= QR SCAN ================= */
 
-    let slipData = await tryDecodeQR(payment.slipImageUrl);
+    let slipData = await tryDecodeQR(payment.slipImageUrl)
 
-    /* ========= OCR fallback ========= */
+    /* ================= OCR FALLBACK ================= */
 
     if (!slipData || slipData.amount == null) {
-      const text = await runOCR(payment.slipImageUrl);
 
-      slipData = parseOCRText(text);
+      const text = await runOCR(payment.slipImageUrl)
+
+      slipData = parseOCRText(text)
+
     }
 
     if (!slipData || slipData.amount == null) {
-      return rejectPayment(paymentId, "Cannot read slip amount");
+      return rejectPayment(paymentId, "Cannot read slip amount")
     }
-
-    console.log("Expected amount:", payment.amount);
-    console.log("Slip amount:", slipData.amount);
 
     /* ================= AMOUNT CHECK ================= */
 
-    if (
-      slipData.amount == null ||
-      Math.abs(Number(slipData.amount) - Number(payment.amount)) > 0.01
-    ) {
-      return rejectPayment(paymentId, "Amount mismatch");
-    }
+    const expected = Number(payment.amount)
+    const received = Number(slipData.amount)
 
-    /* ================= RECEIVER ACCOUNT CHECK ================= */
-
-    if (ownerAccount && slipData.receiverAccount) {
-      const cleanOwner = String(ownerAccount).replace(/\D/g, "");
-      const cleanReceiver = String(slipData.receiverAccount).replace(/\D/g, "");
-
-      if (!cleanReceiver) return;
-
-      const ownerTail = cleanOwner.slice(-6);
-
-      if (!cleanReceiver.includes(ownerTail)) {
-        return rejectPayment(paymentId, "Receiver account mismatch");
-      }
+    if (Math.abs(expected - received) > 0.01) {
+      return rejectPayment(paymentId, "Amount mismatch")
     }
 
     /* ================= DUPLICATE TRANSACTION ================= */
 
     if (slipData.transactionRef) {
+
       const duplicateRef = await prisma.payment.findFirst({
-        where: { transactionRef: slipData.transactionRef },
-      });
+        where: {
+          transactionRef: slipData.transactionRef
+        }
+      })
 
       if (duplicateRef) {
-        return rejectPayment(paymentId, "Duplicate transaction reference");
+        return rejectPayment(paymentId, "Duplicate transaction reference")
       }
+
+    }
+
+    /* ================= RECEIVER ACCOUNT CHECK ================= */
+
+    if (ownerAccount && slipData.receiverAccount) {
+
+      const cleanOwner = String(ownerAccount).replace(/\D/g, "")
+      const cleanReceiver = String(slipData.receiverAccount).replace(/\D/g, "")
+
+      if (cleanOwner && cleanReceiver) {
+
+        const ownerTail = cleanOwner.slice(-6)
+
+        if (!cleanReceiver.includes(ownerTail)) {
+
+          return rejectPayment(paymentId, "Receiver account mismatch")
+
+        }
+
+      }
+
     }
 
     /* ================= SUCCESS ================= */
@@ -187,40 +241,50 @@ async function verifyPayment(paymentId: number) {
         status: "VERIFIED",
         verifiedByAI: true,
         paidAt: new Date(),
-        transactionRef: slipData.transactionRef || null,
-      },
-    });
+        transactionRef: slipData.transactionRef || null
+      }
+    })
 
-    console.log("Payment verified:", paymentId);
   } catch (error) {
-    console.error("VERIFY ERROR:", error);
 
-    await rejectPayment(paymentId, "Verification error");
+    console.error("VERIFY ERROR:", error)
+
+    await rejectPayment(paymentId, "Verification error")
+
   }
+
 }
 
 /* =====================================================
    QR DECODE
 ===================================================== */
-async function tryDecodeQR(imagePath: string) {
+async function tryDecodeQR(imageUrl: string) {
+
   try {
-    const image = await sharp(imagePath)
+
+    const buffer = await loadImageBuffer(imageUrl)
+
+    const image = await sharp(buffer)
       .raw()
       .ensureAlpha()
-      .toBuffer({ resolveWithObject: true });
+      .toBuffer({ resolveWithObject: true })
 
     const qr = jsQR(
       new Uint8ClampedArray(image.data),
       image.info.width,
-      image.info.height,
-    );
+      image.info.height
+    )
 
-    if (!qr) return null;
+    if (!qr) return null
 
-    return parseQRData(qr.data);
+    return parseQRData(qr.data)
+
   } catch {
-    return null;
+
+    return null
+
   }
+
 }
 
 //emv parser (สำหรับ PromptPay QR จะอยู่ในรูปแบบ EMV)
@@ -252,9 +316,27 @@ function parseQRData(data: string) {
 /* =====================================================
    OCR FALLBACK
 ===================================================== */
-async function runOCR(imagePath: string) {
-  const result = await Tesseract.recognize(imagePath, "tha+eng");
-  return result.data.text;
+async function runOCR(imageUrl: string) {
+
+  try {
+
+    const buffer = await loadImageBuffer(imageUrl)
+
+    const result = await Tesseract.recognize(
+      buffer,
+      "tha+eng"
+    )
+
+    return result.data.text
+
+  } catch (error) {
+
+    console.error("OCR ERROR:", error)
+
+    return ""
+
+  }
+
 }
 
 function parseOCRText(text: string) {
@@ -307,21 +389,57 @@ function extractAccount(text: string) {
    REJECT PAYMENT
 ===================================================== */
 async function rejectPayment(paymentId: number, reason: string) {
-  const payment = await prisma.payment.findUnique({
-    where: { id: paymentId },
-  });
 
-  if (payment?.slipImageUrl && fs.existsSync(payment.slipImageUrl)) {
-    fs.unlinkSync(payment.slipImageUrl);
+  try {
+
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId }
+    })
+
+    if (!payment) return
+
+    /* ================= DELETE FROM SUPABASE ================= */
+
+    if (payment.slipImageUrl) {
+
+      const bucket = process.env.SUPABASE_BUCKET || "slips"
+
+      try {
+
+        const filePath = payment.slipImageUrl.split(`/object/public/${bucket}/`)[1]
+
+        if (filePath) {
+
+          await supabase.storage
+            .from(bucket)
+            .remove([filePath])
+
+        }
+
+      } catch (err) {
+
+        console.error("SUPABASE DELETE ERROR:", err)
+
+      }
+
+    }
+
+    /* ================= UPDATE PAYMENT ================= */
+
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: "REJECTED",
+        verificationNote: reason
+      }
+    })
+
+  } catch (error) {
+
+    console.error("REJECT PAYMENT ERROR:", error)
+
   }
 
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      status: "REJECTED",
-      verificationNote: reason,
-    },
-  });
 }
 
 /* =====================================================
@@ -743,3 +861,13 @@ export const getPaymentById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to fetch payment" });
   }
 };
+
+async function loadImageBuffer(url: string): Promise<Buffer> {
+
+  const response = await axios.get(url, {
+    responseType: "arraybuffer"
+  })
+
+  return Buffer.from(response.data)
+
+}
