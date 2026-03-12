@@ -104,11 +104,13 @@ import { ref, onMounted, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import api from "@/services/api"
 
-/* ================= STATE ================= */
+/* ================= ROUTE ================= */
 
 const route = useRoute()
 
 const ticketId = Number(route.params.ticketId)
+
+/* ================= STATE ================= */
 
 const ticket = ref<any>(null)
 const messages = ref<any[]>([])
@@ -134,12 +136,13 @@ const fetchTicket = async () => {
 
     ticket.value = res.data
 
-    messages.value = res.data.messages
+    messages.value = res.data.messages || []
+
+    await nextTick()
 
     scrollBottom()
 
-  }
-
+  } 
   catch (error) {
 
     console.error("Fetch ticket error:", error)
@@ -159,9 +162,8 @@ const sendMessage = async () => {
     sending.value = true
 
     const res = await api.post(
-      "/support/messages",
+      `/support/tickets/${ticketId}/messages`,
       {
-        ticketId,
         message: newMessage.value
       }
     )
@@ -174,14 +176,12 @@ const sendMessage = async () => {
 
     scrollBottom()
 
-  }
-
+  } 
   catch (error) {
 
     console.error("Send message error:", error)
 
-  }
-
+  } 
   finally {
 
     sending.value = false
@@ -213,7 +213,10 @@ const formatTime = (date: string) => {
 
   return new Date(date).toLocaleTimeString(
     "th-TH",
-    { hour: "2-digit", minute: "2-digit" }
+    {
+      hour: "2-digit",
+      minute: "2-digit"
+    }
   )
 
 }
