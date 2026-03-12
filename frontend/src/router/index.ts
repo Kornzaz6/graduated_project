@@ -63,8 +63,8 @@ const routes = [
       { path: "payments", name: "MemberPayments", component: MemberPayment_page }, // 🔥 เพิ่มรวมบิล
       { path: "/profile", name: "ManageMemberProfile", component: ManageMemberProfile_page},
       { path: "support/create/:contractId", name: "MemberCreateTicket", component: MemberCreateTicket_page},
-      { path: "/supprot", name: "MemberTickets", component: MemberTickets_page},
-      { path: "/tickets/:ticketId/chat", name: "TicketChat", component: TicketChat_page}
+      { path: "supprot", name: "MemberTickets", component: MemberTickets_page},
+      { path: "tickets/:ticketId/chat", name: "TicketChat", component: TicketChat_page}
     ],
   },
 
@@ -102,7 +102,7 @@ const routes = [
       { path: "manage-rooms/:id", name: "ManageRooms", component: OwnerMange_rooms_page },
       { path: "contracts/:contractId", name: "OwnerContratDetail", component: OwnerContractDetail_page},
       { path: "tickets", name: "OwnerTickets", component: OwnerTickets_page},
-      { path: "/tickets/:ticketId/chat", name: "TicketChat", component: TicketChat_page}
+      { path: "tickets/:ticketId/chat", name: "OwnerTicketChat", component: TicketChat_page}
 
     ],
   },

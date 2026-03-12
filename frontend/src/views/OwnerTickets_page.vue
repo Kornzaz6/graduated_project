@@ -103,7 +103,7 @@
 
                 <router-link
                   :to="{
-                    name: 'TicketChat',
+                    name: 'OwnerTicketChat',
                     params: { ticketId: ticket.id }
                   }"
                   class="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
