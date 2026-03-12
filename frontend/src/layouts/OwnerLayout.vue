@@ -149,6 +149,15 @@
                 👥 Tenants
               </router-link>
 
+              <router-link
+               v-if="isOwner"
+               :to="{ name: 'OwnerPayments'}"
+               class="dropdown-item"
+               @click="closeMenu"
+              >
+              Owner Manage Payment
+              </router-link>
+
               <div class="my-2 border-t"></div>
 
               <button
