@@ -101,7 +101,9 @@ const routes = [
       { path: "edit-dormitory/:id", name: "EditDormitory", component: OwnerMangedormitoryInfo_page },
       { path: "manage-rooms/:id", name: "ManageRooms", component: OwnerMange_rooms_page },
       { path: "contracts/:contractId", name: "OwnerContratDetail", component: OwnerContractDetail_page},
-      { path: "tickets", name: "OwnerTickets", component: OwnerTickets_page}
+      { path: "tickets", name: "OwnerTickets", component: OwnerTickets_page},
+      { path: "/tickets/:ticketId/chat", name: "TicketChat", component: TicketChat_page}
+
     ],
   },
 
