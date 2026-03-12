@@ -30,6 +30,7 @@ import OwnerProfile_page from "@/views/OwnerProfile_page.vue"
 import OwnerTenants_page from "@/views/OwnerTenants_page.vue"
 import OwnerMangedormitoryInfo_page from "@/views/OwnerMangedormitoryInfo_page.vue"
 import OwnerContractDetail_page from "@/views/OwnerContractDetail_page.vue"
+import OwnerTickets_page from "@/views/OwnerTickets_page.vue"
 
 // Member
 import MembercontractForm_page from "@/views/MembercontractForm_page.vue"
@@ -37,6 +38,9 @@ import MemberPayment_page from "@/views/MemberPayment_page.vue"
 import MemberDashboard from "@/views/MemberDashboard_page.vue"
 import ApplyOwner_page from "@/views/ApplyOwner_page.vue"
 import ManageMemberProfile_page from "@/views/ManageMemberProfile_page.vue"
+import MemberCreateTicket_page from "@/views/MemberCreateTicket_page.vue"
+import MemberTickets_page from "@/views/MemberTickets_page.vue"
+import TicketChat_page from "@/views/TicketChat_page.vue"
 
 const routes = [
   // 🌍 PUBLIC
@@ -57,7 +61,10 @@ const routes = [
       { path: "contract/:requestId", name: "MemberContract", component: MembercontractForm_page },
       { path: "payment/:contractId", name: "MemberPayment", component: MemberPayment_page },
       { path: "payments", name: "MemberPayments", component: MemberPayment_page }, // 🔥 เพิ่มรวมบิล
-      { path: "/profile", name: "ManageMemberProfile", component: ManageMemberProfile_page}
+      { path: "/profile", name: "ManageMemberProfile", component: ManageMemberProfile_page},
+      { path: "support/create/:contractId", name: "MemberCreateTicket", component: MemberCreateTicket_page},
+      { path: "/supprot", name: "MemberTickets", component: MemberTickets_page},
+      { path: "/support/ticket/:ticketId", name: "TicketChat", component: TicketChat_page}
     ],
   },
 
@@ -93,7 +100,8 @@ const routes = [
       { path: "profile", name: "OwnerProfile", component: OwnerProfile_page },
       { path: "edit-dormitory/:id", name: "EditDormitory", component: OwnerMangedormitoryInfo_page },
       { path: "manage-rooms/:id", name: "ManageRooms", component: OwnerMange_rooms_page },
-      { path: "contracts/:contractId", name: "OwnerContratDetail", component: OwnerContractDetail_page}
+      { path: "contracts/:contractId", name: "OwnerContratDetail", component: OwnerContractDetail_page},
+      { path: "tickets", name: "OwnerTickets", component: OwnerTickets_page}
     ],
   },
 

@@ -67,6 +67,20 @@ enum DormitoryStatus {
   REJECTED
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketType {
+  GENERAL
+  PAYMENT
+  MAINTENANCE
+  COMPLAINT
+}
+
 /**
  * ================= MODELS =================
  */
@@ -91,6 +105,11 @@ model User {
 
   owner             Owner?
   ownerApplications OwnerApplication[]
+
+  memberTickets Ticket[] @relation("MemberTickets")
+  ownerTickets  Ticket[] @relation("OwnerTickets")
+
+  messages      Message[]
 
   @@index([role])
 }
@@ -260,6 +279,8 @@ model LeaseContract {
 
   payments Payment[]
 
+  tickets Ticket[]
+
   @@index([userId])
   @@index([roomId])
 }
@@ -363,4 +384,56 @@ model OwnerApplication {
 
   @@index([status])
   @@index([userId])
+}
+
+model Ticket {
+  id          Int      @id @default(autoincrement())
+
+  contractId  Int
+  memberId    Int
+  ownerId     Int
+
+  title       String
+  type        TicketType
+  status      TicketStatus @default(OPEN)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contract    LeaseContract @relation(fields: [contractId], references: [id])
+  member      User          @relation("MemberTickets", fields: [memberId], references: [id])
+  owner       User          @relation("OwnerTickets", fields: [ownerId], references: [id])
+
+  messages    Message[]
+  attachments TicketAttachment[]
+
+  @@index([contractId])
+  @@index([memberId])
+  @@index([ownerId])
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+
+  ticketId  Int
+  senderId  Int
+
+  message   String
+  read      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  sender    User   @relation(fields: [senderId], references: [id])
+}
+
+model TicketAttachment {
+  id        Int      @id @default(autoincrement())
+
+  ticketId  Int
+  fileUrl   String
+
+  createdAt DateTime @default(now())
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
 }
