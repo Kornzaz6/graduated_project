@@ -48,7 +48,7 @@ app.use("/api/lease", leaseRoutes)
 app.use("/api/payments", paymentRoutes)
 app.use("/api/reviews", reviewRoutes)
 app.use("/api/contracts", contractRoute)
-app.use("/support", supportRoutes)
+app.use("/api/support", supportRoutes)
 
 /* ================= 404 ================= */
 

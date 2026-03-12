@@ -16,7 +16,9 @@ import { authMiddleware } from "../middleware/auth"
 
 const router = Router()
 
-/* ================= TICKETS ================= */
+/* =====================================================
+   MEMBER TICKETS
+===================================================== */
 
 router.post(
   "/tickets",
@@ -30,11 +32,19 @@ router.get(
   getMemberTickets
 )
 
+/* =====================================================
+   OWNER TICKETS
+===================================================== */
+
 router.get(
   "/tickets/owner",
   authMiddleware,
   getOwnerTickets
 )
+
+/* =====================================================
+   SINGLE TICKET
+===================================================== */
 
 router.get(
   "/tickets/:id",
@@ -48,10 +58,12 @@ router.patch(
   updateTicketStatus
 )
 
-/* ================= MESSAGES ================= */
+/* =====================================================
+   MESSAGES
+===================================================== */
 
 router.post(
-  "/messages",
+  "/tickets/:id/messages",
   authMiddleware,
   sendMessage
 )
