@@ -64,7 +64,7 @@ const routes = [
       { path: "/profile", name: "ManageMemberProfile", component: ManageMemberProfile_page},
       { path: "support/create/:contractId", name: "MemberCreateTicket", component: MemberCreateTicket_page},
       { path: "/supprot", name: "MemberTickets", component: MemberTickets_page},
-      { path: "/support/ticket/:ticketId", name: "TicketChat", component: TicketChat_page}
+      { path: "/tickets/:ticketId/chat", name: "TicketChat", component: TicketChat_page}
     ],
   },
 
