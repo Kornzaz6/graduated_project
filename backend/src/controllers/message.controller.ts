@@ -9,7 +9,9 @@ export const sendMessage = async (req: Request, res: Response) => {
 
   try {
 
-    const { ticketId, message } = req.body
+    const ticketId = Number(req.params.id)
+
+    const { message } = req.body
 
     const senderId = (req as any).user?.id
 
@@ -25,7 +27,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
       data: {
 
-        ticketId: Number(ticketId),
+        ticketId,
         senderId,
         message
 
