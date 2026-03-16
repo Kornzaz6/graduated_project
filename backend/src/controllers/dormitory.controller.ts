@@ -136,48 +136,69 @@ if (req.files && Array.isArray(req.files)) {
 
 export const getDormitories = async (req: Request, res: Response) => {
   try {
-    const { search, type } = req.query;
 
     const dormitories = await prisma.dormitory.findMany({
       where: {
-        AND: [
-          search
-            ? {
-                OR: [
-                  {
-                    name: {
-                      contains: String(search),
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    location: {
-                      contains: String(search),
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              }
-            : {},
-          type
-            ? {
-                type: String(type), 
-              }
-            : {},
-        ],
+        status: "APPROVED"
       },
       include: {
         images: true,
         rooms: true,
-      },
-    });
+        reviews: {
+          select: {
+            rating: true
+          }
+        }
+      }
+    })
 
-    res.json(dormitories);
+    const result = dormitories.map((dorm) => {
+
+      /* ===== rating ===== */
+
+      const ratings = dorm.reviews.map(r => r.rating)
+
+      const avgRating =
+        ratings.length > 0
+          ? ratings.reduce((a,b)=>a+b,0) / ratings.length
+          : 0
+
+      /* ===== price ===== */
+
+      const prices = dorm.rooms.map(r => Number(r.price))
+
+      const minPrice =
+        prices.length > 0
+          ? Math.min(...prices)
+          : 0
+
+      /* ===== available rooms ===== */
+
+      const availableRooms =
+        dorm.rooms.filter(r => r.status === "AVAILABLE").length
+
+      return {
+        ...dorm,
+        rating: Number(avgRating.toFixed(1)),
+        reviewCount: ratings.length,
+        minPrice,
+        availableRooms
+      }
+
+    })
+
+    res.json(result)
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to fetch dormitories" });
+
+    console.error(error)
+
+    res.status(500).json({
+      message: "Failed to fetch dormitories"
+    })
+
   }
-};
+}
 
 export const getOwnerDormitories = async (req: Request, res: Response) => {
   try {
@@ -393,16 +414,19 @@ export const deleteRoom = async (req: Request, res: Response) => {
 
 export const getDormitoryById = async (req: Request, res: Response) => {
   try {
+
     const id = Number(req.params.id)
 
     const dormitory = await prisma.dormitory.findUnique({
       where: { id },
       include: {
         rooms: true,
+        images: true,
         reviews: {
-          include: { user: true }
-        },
-        images: true
+          include: {
+            user: true
+          }
+        }
       }
     })
 
@@ -410,7 +434,20 @@ export const getDormitoryById = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Dormitory not found" })
     }
 
-    res.json(dormitory)
+    /* ================= CALCULATE RATING ================= */
+
+    const ratings = dormitory.reviews.map(r => r.rating)
+
+    const avgRating =
+      ratings.length > 0
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : 0
+
+    res.json({
+      ...dormitory,
+      rating: Number(avgRating.toFixed(1)),
+      reviewCount: ratings.length
+    })
 
   } catch (error) {
     res.status(500).json({ message: "Error fetching dormitory" })

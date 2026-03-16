@@ -96,14 +96,13 @@
           <div
             class="overflow-hidden transition duration-300 bg-white shadow-sm rounded-3xl hover:shadow-xl"
           >
+            <!-- IMAGE -->
             <div class="relative w-full h-56 overflow-hidden bg-gray-200">
-              <!-- Skeleton -->
               <div
                 v-if="!dorm.images?.length"
                 class="absolute inset-0 bg-gray-300 animate-pulse"
               ></div>
 
-              <!-- Image -->
               <img
                 v-if="dorm.images?.length"
                 loading="lazy"
@@ -113,20 +112,48 @@
               />
             </div>
 
+            <!-- CONTENT -->
             <div class="p-4">
+              <!-- NAME + RATING -->
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold">
                   {{ dorm.name }}
                 </h3>
-                <span class="text-sm text-yellow-500">⭐ 4.8</span>
+
+                <span class="text-sm text-yellow-500">
+                  ⭐ {{ dorm.rating || 0 }}
+                  <span class="text-gray-400"> ({{ dorm.reviewCount }}) </span>
+                </span>
               </div>
 
+              <!-- ADDRESS -->
               <p class="mt-1 text-sm text-gray-500">
                 {{ dorm.address }}
               </p>
 
-              <p class="mt-2 font-semibold text-gray-900">
-                ฿{{ dorm.rooms?.[0]?.price || 0 }} / เดือน
+              <!-- PRICE -->
+              <p class="mt-2 font-semibold text-gray-900">เริ่มต้น ฿{{ dorm.minPrice }} / เดือน</p>
+
+              <!-- DISTANCE -->
+              <p
+                v-if="selectedCenter && dorm.latitude && dorm.longitude"
+                class="text-sm text-gray-500"
+              >
+                ห่าง
+                {{
+                  getDistanceKm(
+                    selectedCenter.lat,
+                    selectedCenter.lon,
+                    dorm.latitude,
+                    dorm.longitude
+                  ).toFixed(1)
+                }}
+                km
+              </p>
+
+              <!-- AVAILABLE ROOMS -->
+              <p class="text-sm font-medium text-green-600">
+                ห้องว่าง {{ dorm.availableRooms }} ห้อง
               </p>
             </div>
           </div>
