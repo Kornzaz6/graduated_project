@@ -101,11 +101,26 @@ The backend is structured using a layered architecture:
 
 ## 🛠 Tech Stack
 
-### Backend
+### Backend (Primary Focus)
 - Node.js + Express
 - TypeScript
 - Prisma ORM
 - PostgreSQL
+
+> The backend is the core of this project, handling business logic, database design, authentication, and payment workflows.
+
+---
+
+### Frontend (Supporting)
+- Vue 3 (Composition API)
+- TypeScript
+- Tailwind CSS
+- Axios
+- Vue Router
+
+> The frontend is developed to interact with backend APIs and simulate real-world user flows.
+
+---
 
 ### Libraries & Tools
 - JWT (jsonwebtoken)
@@ -116,24 +131,41 @@ The backend is structured using a layered architecture:
 - tesseract.js (OCR)
 - promptpay-qr + qrcode
 
+---
+
 ### External Services
 - Supabase (storage)
 
 ---
 
 ## 📂 Project Structure
-
+backend/
+├── src/
+│ ├── controllers/
+│ ├── middleware/
+│ ├── routes/
+│ ├── utils/
+│ └── index.ts
+├── prisma/
+│ └── schema.prisma
 
 ---
 
 ## ⚙️ Setup Instructions
 
+### 📦 Prerequisites
+Make sure you have installed:
+
+- Node.js (v18+ recommended)
+- npm or yarn
+- PostgreSQL
+- Git
+
+---
+
+## 🔧 Backend Setup (Main)
+
 ### 1. Clone repository
 ```bash
 git clone https://github.com/Kornzaz6/graduated_project.git
 cd graduated_project/backend
-
-```md
-POST /auth/login
-POST /payments/upload-slip
-GET /dormitories
