@@ -122,3 +122,18 @@ The backend is structured using a layered architecture:
 ---
 
 ## 📂 Project Structure
+
+
+---
+
+## ⚙️ Setup Instructions
+
+### 1. Clone repository
+```bash
+git clone https://github.com/Kornzaz6/graduated_project.git
+cd graduated_project/backend
+
+```md
+POST /auth/login
+POST /payments/upload-slip
+GET /dormitories
