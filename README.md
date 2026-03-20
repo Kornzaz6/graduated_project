@@ -136,6 +136,28 @@ The backend is structured using a layered architecture:
 ### External Services
 - Supabase (storage)
 
+### Technical Skills
+
+Database:
+- PostgreSQL, Prisma ORM
+- SQL (PL/SQL), SQL Server
+
+Tools & Technologies:
+- Docker (containerization)
+- Firebase
+- Supabase
+
+API & Testing:
+- REST API, Postman
+
+Data & Analytics:
+- Microsoft Power BI
+- Google Looker Studio
+
+Design & Documentation:
+- Figma
+- draw.io
+
 ---
 
 ## 📂 Project Structure
@@ -162,6 +184,9 @@ Make sure you have installed:
 - Git
 
 ---
+
+- Designed backend architecture and system workflows using draw.io
+- Created system diagrams (API flow, database relationships) to support development and communication
 
 ## 🔧 Backend Setup (Main)
 
